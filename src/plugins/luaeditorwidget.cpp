@@ -32,8 +32,8 @@ LuaEditorWidget::LuaEditorWidget()
 {
 	m_updateDocumentTimer.setInterval(UPDATE_DOCUMENT_DEFAULT_INTERVAL);
 	m_updateDocumentTimer.setSingleShot(true);
-	connect(&m_updateDocumentTimer, QTimer::timeout, this, LuaEditorWidget::updateDocument);
-	connect(this, QPlainTextEdit::textChanged, [this](){m_updateDocumentTimer.start();});
+    connect(&m_updateDocumentTimer, &QTimer::timeout, this, &LuaEditorWidget::updateDocument);
+    connect(this, &QPlainTextEdit::textChanged, [this](){m_updateDocumentTimer.start();});
 	
 	m_outlineCombo->setMinimumContentsLength(22);
 	
@@ -123,10 +123,9 @@ void LuaEditorWidget::updateDocument()
 	if(!result.m_error.empty())
 	{
 		QTextCharFormat errorFormat;
-			errorFormat.setBackground(QBrush(QColor(255,246,246)));
-			errorFormat.setUnderlineStyle(QTextCharFormat::WaveUnderline);
-			errorFormat.setUnderlineColor(Qt::red);
-			errorFormat.setToolTip(QString::fromStdString(result.m_error));
+        errorFormat.setUnderlineStyle(QTextCharFormat::WaveUnderline);
+        errorFormat.setUnderlineColor(Qt::red);
+        errorFormat.setToolTip(QString::fromStdString(result.m_error));
 			
 		std::string::size_type endLine = std::min<std::string::size_type>(
 					result.m_pos.m_end.m_line,
