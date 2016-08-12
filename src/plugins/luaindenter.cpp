@@ -73,6 +73,8 @@ QString LuaIndenter::getLastKeyword(const QString &line) const
 }
 int LuaIndenter::getLineDelta(const QString& line) const
 {
+    if (line.length() == 0) return 0;
+
 	// Increase indentation sooner, if possible.
 	int index = line.length()-1;
 	while((index > 0) && line[index].isSpace())
