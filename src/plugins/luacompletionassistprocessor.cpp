@@ -19,6 +19,11 @@
 #include <texteditor/codeassist/genericproposal.h>
 #include <QTextCursor>
 #include <QTextDocument>
+#include <QTextStream>
+#include <QDir>
+#include <QByteArray>
+
+#include <iostream>
 
 namespace LuaEditor { namespace Internal {
 
@@ -88,8 +93,33 @@ LuaCompletionAssistProcessor::LuaCompletionAssistProcessor()
 	  m_functionIcon(QLatin1String(":/LuaEditor/images/func.png")),
 	  m_memIcon(QLatin1String(":/LuaEditor/images/attributes.png")),
 	  m_keywordIcon(QLatin1String(":/LuaEditor/images/keyword.png"))
-{}
-LuaCompletionAssistProcessor::~LuaCompletionAssistProcessor(){}
+{
+    readWords(predefinedMembers, QDir::homePath() + QString::fromLatin1("/.avorion/documentation/completion/members"));
+    readWords(predefinedCalls, QDir::homePath() + QString::fromLatin1("/.avorion/documentation/completion/calls"));
+    readWords(predefinedWords, QDir::homePath() + QString::fromLatin1("/.avorion/documentation/completion/words"));
+}
+
+LuaCompletionAssistProcessor::~LuaCompletionAssistProcessor()
+{
+}
+
+void LuaCompletionAssistProcessor::readWords(QStringList &list, QString path)
+{
+    QFile ifile(path);
+    if (!ifile.exists())
+        return;
+
+    ifile.open(QIODevice::ReadOnly | QIODevice::Text);
+
+    // read whole content
+    QString content = QString::fromLatin1(ifile.readAll());
+
+    // extract words
+    list = content.split(QString::fromLatin1("\n"));
+    list.removeAll(QString::fromLatin1(""));
+
+    ifile.close();
+}
 
 static TextEditor::AssistProposalItem* createCompletionItem(QString const& text, QIcon const& icon, int order =0)
 {
@@ -99,33 +129,35 @@ static TextEditor::AssistProposalItem* createCompletionItem(QString const& text,
 }
 
 struct PriorityList {
-	PriorityList(QString const& s, int pr)
-		: m_str{s}, m_pr(pr) {}
-	PriorityList(QStringList const& s, int pr)
-		: m_str(s), m_pr(pr) {}
-	
-	QStringList m_str;
-	int m_pr;
+    PriorityList(QString const& s, int pr)
+        : m_str{s}, m_pr(pr) {}
+    PriorityList(QStringList const& s, int pr)
+        : m_str(s), m_pr(pr) {}
+
+    QStringList m_str;
+    int m_pr;
 };
 
 TextEditor::IAssistProposal* LuaCompletionAssistProcessor::perform(const TextEditor::AssistInterface *interface)
 {
 	if(interface->reason() == TextEditor::IdleEditor && !acceptsIdleEditor())
 		return 0;
-	
+
 	int pos = interface->position() - 1;
 	QChar ch = interface->characterAt(pos);
-	while(ch.isLetterOrNumber() || ch == QLatin1Char('_') || ch.isSpace())
+
+    while(ch.isSpace())
 	{
 		ch = interface->characterAt(--pos);
 	}
-	
-	
+
 	bool isFunctionCall = (ch == QLatin1Char('(')) || (ch == QLatin1Char(','));
 	bool isMemberCompletion = (ch == QLatin1Char('.'));
-	
+    bool isFunctionCompletion = (ch == QLatin1Char(':'));
+    bool isWordCompletion = !isFunctionCall && !isMemberCompletion && !isFunctionCompletion;
+
 	QString currentMember;
-	if(isMemberCompletion)
+
 	{
 		int cpos = pos-1;
 		while((cpos >= 0) && interface->characterAt(cpos).isSpace())
@@ -136,18 +168,21 @@ TextEditor::IAssistProposal* LuaCompletionAssistProcessor::perform(const TextEdi
 			--cpos;
 		++cpos; ++cpos_end;
 		
-		currentMember = interface->textAt(cpos,cpos_end-cpos);
+        if (isWordCompletion)
+            ++cpos_end;
+
+        currentMember = interface->textAt(cpos, cpos_end-cpos);
 	}
-	
+
 	QList<PriorityList> globVariables;
 	QList<PriorityList> variables;
 	QList<PriorityList> keywords;
 	QList<PriorityList> magics;
-	
+
 	RecursiveClassMembers targetIds;
 	Scanner::TakeBackwardsState(interface->textDocument()->findBlockByLineNumber(interface->textDocument()->findBlock(interface->position()).firstLineNumber()-1),&targetIds);
 	
-	if(isMemberCompletion)
+    if(isMemberCompletion || isFunctionCompletion)
 	{
 		RecursiveClassMembers writtenTargetId;
 		Scanner::TakeBackwardsMember(interface->textDocument()->findBlock(interface->position()),writtenTargetId);
@@ -167,13 +202,20 @@ TextEditor::IAssistProposal* LuaCompletionAssistProcessor::perform(const TextEdi
 		{
 			for(auto it = mem->begin(); it != mem->end(); ++it)
 			{
-				variables.append({it->key(),3});
+                variables.append({it->key(),4});
 			}
 		}
 		for(auto it = targetIds.begin(); it != targetIds.end(); ++it)
 		{
-			globVariables.append({it->key(),2});
+            globVariables.append({it->key(),3});
 		}
+
+        if (isFunctionCompletion)
+            globVariables.append({predefinedCalls, 2});
+
+        if (isMemberCompletion)
+            globVariables.append({predefinedMembers, 2});
+
 		globVariables.append({g_special,1});
 		magics.append({g_magics,0});
 	}
@@ -181,11 +223,49 @@ TextEditor::IAssistProposal* LuaCompletionAssistProcessor::perform(const TextEdi
 	{
 		for(auto it = targetIds.begin(); it != targetIds.end(); ++it)
 		{
-			variables.append({it->key(),2});
+            variables.append({it->key(),3});
 		}
+
+        variables.append({predefinedCalls, 2});
 		variables.append({g_special,1});
 		keywords.append({g_keyword_fcall,0});
 	}
+    else if (isWordCompletion)
+    {
+        QString lowerWord = currentMember.toLower();
+
+        for (auto it = targetIds.begin(); it != targetIds.end(); ++it)
+        {
+            if (it->key().toLower().startsWith(lowerWord))
+                variables.append({it->key(),5});
+        }
+
+        for (const QString &str : predefinedWords)
+        {
+            if (str.toLower().startsWith(lowerWord))
+                variables.append({str, 4});
+        }
+        for (const QString &str : g_special)
+        {
+            if (str.toLower().startsWith(lowerWord))
+                variables.append({str, 3});
+        }
+        for (const QString &str : g_types)
+        {
+            if (str.toLower().startsWith(lowerWord))
+                variables.append({str, 2});
+        }
+        for (const QString &str : g_keyword_beginning)
+        {
+            if (str.toLower().startsWith(lowerWord))
+                variables.append({str, 1});
+        }
+        for (const QString &str : g_keyword_fcall)
+        {
+            if (str.toLower().startsWith(lowerWord))
+                variables.append({str, 0});
+        }
+    }
 	else
 	{
 		for(auto it = targetIds.begin(); it != targetIds.end(); ++it)
@@ -198,7 +278,7 @@ TextEditor::IAssistProposal* LuaCompletionAssistProcessor::perform(const TextEdi
 		keywords.append({g_keyword_fcall,0});
 	}
 	
-	QList<TextEditor::AssistProposalItem*> m_completions;
+    QList<TextEditor::AssistProposalItemInterface*> m_completions;
 	
 	QSet<QString> m_usedSuggestions;
 	
@@ -252,6 +332,12 @@ TextEditor::IAssistProposal* LuaCompletionAssistProcessor::perform(const TextEdi
 	}
 	
 	m_startPosition = pos+1;
+
+    if (isWordCompletion)
+    {
+        m_startPosition -= currentMember.length();
+    }
+
 	return new TextEditor::GenericProposal(m_startPosition, m_completions);
 }
 

@@ -16,6 +16,8 @@
 #define LUACOMPLETIONASSISTPROCESSOR_H
 #include "luaeditor_global.h"
 #include <texteditor/codeassist/iassistprocessor.h>
+#include <QIcon>
+#include <QString>
 
 namespace LuaEditor { namespace Internal {
 class LuaCompletionAssistProcessor : public TextEditor::IAssistProcessor
@@ -32,6 +34,12 @@ public:
 	QIcon m_functionIcon;
 	QIcon m_memIcon;
 	QIcon m_keywordIcon;
+
+    QStringList predefinedMembers;
+    QStringList predefinedCalls;
+    QStringList predefinedWords;
+
+    void readWords(QStringList &list, QString path);
 };
 
 } }
