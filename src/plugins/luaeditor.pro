@@ -4,8 +4,7 @@ CONFIG += c++11
 
 # DEFINES += ALLOW_LOGGING
 
-# Lua files
-INCLUDEPATH += ./lua
+LIBS += -llua
 
 SOURCES += luaeditorplugin.cpp \
     luahoverhandler.cpp \
@@ -20,47 +19,13 @@ SOURCES += luaeditorplugin.cpp \
     luacompletionassistprocessor.cpp \
     luafunctionhintproposalmodel.cpp \
     scanner/recursiveclassmembers.cpp \
-	luaengine/luaEngine.cpp \
-    lua/lapi.c \
-    lua/lauxlib.c \
-    lua/lbaselib.c \
-    lua/lbitlib.c \
-    lua/lcode.c \
-    lua/lcorolib.c \
-    lua/lctype.c \
-    lua/ldblib.c \
-    lua/ldebug.c \
-    lua/ldo.c \
-    lua/ldump.c \
-    lua/lfunc.c \
-    lua/lgc.c \
-    lua/linit.c \
-    lua/liolib.c \
-    lua/llex.c \
-    lua/lmathlib.c \
-    lua/lmem.c \
-    lua/loadlib.c \
-    lua/lobject.c \
-    lua/lopcodes.c \
-    lua/loslib.c \
-    lua/lparser.c \
-    lua/lstate.c \
-    lua/lstring.c \
-    lua/lstrlib.c \
-    lua/ltable.c \
-    lua/ltablib.c \
-    lua/ltm.c \
-    lua/lundump.c \
-    lua/lutf8lib.c \
-    lua/lvm.c \
-    lua/lzio.c \
+    luaengine/luaEngine.cpp \
     luafunctionfilter.cpp
 
 HEADERS += luaeditorplugin.h \
-        luaeditor_global.h \
-        luaeditorconstants.h \
+    luaeditor_global.h \
+    luaeditorconstants.h \
     luahoverhandler.h \
-    ../luaEngine/luaengine.h \
     luaeditorwidget.h \
     luaeditorfactory.h \
     luahighlighter.h \
@@ -73,46 +38,18 @@ HEADERS += luaeditorplugin.h \
     luacompletionassistprocessor.h \
     luafunctionhintproposalmodel.h \
     scanner/recursiveclassmembers.h \
-	luaengine/luaengine.h \
-	luaengine/luaengine_requirements.h \
-    lua/lapi.h \
-    lua/lauxlib.h \
-    lua/lcode.h \
-    lua/lctype.h \
-    lua/ldebug.h \
-    lua/ldo.h \
-    lua/lfunc.h \
-    lua/lgc.h \
-    lua/llex.h \
-    lua/llimits.h \
-    lua/lmem.h \
-    lua/lobject.h \
-    lua/lopcodes.h \
-    lua/lparser.h \
-    lua/lprefix.h \
-    lua/lstate.h \
-    lua/lstring.h \
-    lua/ltable.h \
-    lua/ltm.h \
-    lua/lua.h \
-    lua/luaconf.h \
-    lua/lualib.h \
-    lua/lundump.h \
-    lua/lvm.h \
-    lua/lzio.h \
+    luaengine/luaengine.h \
     luafunctionfilter.h
 
 # Qt Creator linking
 
 ## set the QTC_SOURCE environment variable to override the setting here
 QTCREATOR_SOURCES = $$(QTC_SOURCE)
-# isEmpty(QTCREATOR_SOURCES):QTCREATOR_SOURCES="/path/to/qt-creator-source"
-isEmpty(QTCREATOR_SOURCES):QTCREATOR_SOURCES="/home/koonschi/devel/qt-creator"
+isEmpty(QTCREATOR_SOURCES):QTCREATOR_SOURCES="/path/to/qt-creator-source"
 
 ## set the QTC_BUILD environment variable to override the setting here
 IDE_BUILD_TREE = $$(QTC_BUILD)
-# isEmpty(IDE_BUILD_TREE):IDE_BUILD_TREE="/path/to/qt-creator-build"
-isEmpty(IDE_BUILD_TREE):IDE_BUILD_TREE="/home/koonschi/devel/build-qtcreator-Desktop-Debug"
+isEmpty(IDE_BUILD_TREE):IDE_BUILD_TREE="/path/to/qt-creator-build"
 
 ## uncomment to build plugin into user config directory
 ## <localappdata>/plugins/<ideversion>
@@ -128,7 +65,7 @@ isEmpty(IDE_BUILD_TREE):IDE_BUILD_TREE="/home/koonschi/devel/build-qtcreator-Des
 
 QTC_PLUGIN_NAME = LuaEditor
 QTC_LIB_DEPENDS += \
-	utils
+    utils
 
 QTC_PLUGIN_DEPENDS += \
     coreplugin \
