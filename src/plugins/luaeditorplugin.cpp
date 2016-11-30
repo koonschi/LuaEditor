@@ -15,6 +15,7 @@
 #include "luaeditorplugin.h"
 #include "luaeditorfactory.h"
 #include "luaeditorconstants.h"
+#include "luafunctionfilter.h"
 
 #include <coreplugin/actionmanager/actioncontainer.h>
 #include <coreplugin/actionmanager/actionmanager.h>
@@ -43,6 +44,8 @@ bool LuaEditorPlugin::initialize(const QStringList &arguments, QString *errorStr
 	
 	Utils::MimeDatabase::addMimeTypes(QLatin1String(":/LuaEditor/LuaEditor.mimetypes.xml"));
 	addAutoReleasedObject(new LuaEditorFactory);
+    addAutoReleasedObject(new LuaFunctionFilter);
+
 	//addAutoReleasedObject(new LuaCompletionAssistProvider);
 	
 	Core::ActionContainer* contextMenu = Core::ActionManager::createMenu(Constants::M_CONTEXT);
