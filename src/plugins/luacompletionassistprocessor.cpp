@@ -102,12 +102,70 @@ LuaCompletionAssistProcessor::LuaCompletionAssistProcessor()
 {
     readWords(predefinedMembers, QDir::homePath() + QString::fromLatin1("/.avorion/documentation/completion/members"));
     readWords(predefinedWords, QDir::homePath() + QString::fromLatin1("/.avorion/documentation/completion/words"));
-    readWords(predefinedCalls, QDir::homePath() + QString::fromLatin1("/.avorion/documentation/completion/calls"));
-//    readCalls(predefinedCalls, predefinedCallInfo, QDir::homePath() + QString::fromLatin1("/.avorion/documentation/completion/calls"));
+    readCalls(predefinedCalls, predefinedFunctionInfos, QDir::homePath() + QString::fromLatin1("/.avorion/documentation/completion/calls"));
 }
 
 LuaCompletionAssistProcessor::~LuaCompletionAssistProcessor()
 {
+}
+
+void LuaCompletionAssistProcessor::readCalls(QStringList &words, QMap<QString, QVector<Function>> &functions, QString path)
+{
+    QFile ifile(path);
+    if (!ifile.exists())
+        return;
+
+    static QMap<QString, std::tuple<QDateTime, QStringList, QMap<QString, QVector<Function>>>> dates;
+
+    auto it = dates.find(path);
+    if (it != dates.end())
+    {
+        QFileInfo info(path);
+        const QDateTime &read = std::get<0>(*it);
+
+        // if the read happened later than the last modification, it's up to date
+        if (info.lastModified() < read)
+        {
+            words = std::get<1>(*it);
+            functions = std::get<2>(*it);
+            return;
+        }
+    }
+
+    words.clear();
+    functions.clear();
+
+    // read whole content
+    ifile.open(QIODevice::ReadOnly | QIODevice::Text);
+    QString content = QString::fromLatin1(ifile.readAll());
+    ifile.close();
+
+    // parse function signatures
+    auto lines = content.split(QString::fromLatin1("\n"));
+    lines.removeAll(QString(""));
+
+    for (const QString &str : lines)
+    {
+        QStringList parts = str.split("|");
+        if (parts.isEmpty()) continue;
+
+        Function function;
+        function.m_functionName = parts.at(0);
+        if (parts.size() > 1)
+            function.m_returnType = parts.at(1);
+
+        for (int i = 2; i < parts.size(); ++i)
+            function.m_arguments.push_back(parts.at(i));
+
+        QString functionNameNoObject = parts.at(0).split(":").back();
+
+        functions[functionNameNoObject].push_back(function);
+        words.push_back(functionNameNoObject);
+    }
+
+
+    // update cache
+    dates[path] = std::make_tuple(QDateTime::currentDateTime(), words, functions);
 }
 
 void LuaCompletionAssistProcessor::readWords(QStringList &out, QString path)
@@ -320,6 +378,16 @@ TextEditor::IAssistProposal *LuaCompletionAssistProcessor::tryCreateFunctionHint
                     function.m_arguments.push_back(part.trimmed());
                 }
 
+                functions.push_back(function);
+            }
+        }
+
+        // check all predefined functions
+        auto it = predefinedFunctionInfos.find(functionName);
+        if (it != predefinedFunctionInfos.end())
+        {
+            for (const Function &function : *it)
+            {
                 functions.push_back(function);
             }
         }

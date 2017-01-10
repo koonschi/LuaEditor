@@ -15,9 +15,11 @@
 #ifndef LUACOMPLETIONASSISTPROCESSOR_H
 #define LUACOMPLETIONASSISTPROCESSOR_H
 #include "luaeditor_global.h"
+#include "luafunctionhintproposalmodel.h"
 #include <texteditor/codeassist/iassistprocessor.h>
 #include <QIcon>
 #include <QString>
+#include <QMap>
 
 namespace TextEditor {
 class GenericProposal;
@@ -27,6 +29,9 @@ namespace LuaEditor { namespace Internal {
 
 class LuaCompletionAssistProcessor : public TextEditor::IAssistProcessor
 {
+public:
+    typedef LuaFunctionHintProposalModel::Function Function;
+
 public:
 	LuaCompletionAssistProcessor();
 	virtual ~LuaCompletionAssistProcessor();
@@ -43,8 +48,11 @@ public:
     QStringList predefinedMembers;
     QStringList predefinedCalls;
     QStringList predefinedWords;
+    QMap<QString, QVector<Function>> predefinedFunctionInfos;
 
     void readWords(QStringList &out, QString path);
+    void readCalls(QStringList &words, QMap<QString, QVector<Function>> &functions, QString path);
+
     TextEditor::GenericProposal *createContentProposal(const TextEditor::AssistInterface *interface);
     TextEditor::IAssistProposal *tryCreateFunctionHintProposal(const TextEditor::AssistInterface *interface);
 };

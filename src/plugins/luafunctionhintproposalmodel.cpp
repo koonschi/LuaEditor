@@ -57,9 +57,9 @@ QString LuaFunctionHintProposalModel::text(int index) const
 
     QString hintText;
 
-    hintText += hintedFunction.m_returnType.toHtmlEscaped();
+    hintText += hintedFunction.m_returnType;
     hintText += QString(" ");
-    hintText += hintedFunction.m_functionName.toHtmlEscaped();
+    hintText += hintedFunction.m_functionName;
     hintText += QString("(");
 
     for (int i = 0; i < hintedFunction.m_arguments.size(); ++i)
@@ -70,12 +70,12 @@ QString LuaFunctionHintProposalModel::text(int index) const
         if (i == m_currentArgument)
         {
             hintText += QString("<b>");
-            hintText += hintedFunction.m_arguments[i].toHtmlEscaped();
+            hintText += hintedFunction.m_arguments[i];
             hintText += QString("</b>");
         }
         else
         {
-            hintText += hintedFunction.m_arguments[i].toHtmlEscaped();
+            hintText += hintedFunction.m_arguments[i];
         }
     }
 
