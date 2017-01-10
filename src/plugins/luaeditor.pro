@@ -54,7 +54,8 @@ SOURCES += luaeditorplugin.cpp \
     lua/lutf8lib.c \
     lua/lvm.c \
     lua/lzio.c \
-    luafunctionfilter.cpp
+    luafunctionfilter.cpp \
+    luafunctionparser.cpp
 
 HEADERS += luaeditorplugin.h \
         luaeditor_global.h \
@@ -100,7 +101,8 @@ HEADERS += luaeditorplugin.h \
     lua/lundump.h \
     lua/lvm.h \
     lua/lzio.h \
-    luafunctionfilter.h
+    luafunctionfilter.h \
+    luafunctionparser.h
 
 # Qt Creator linking
 

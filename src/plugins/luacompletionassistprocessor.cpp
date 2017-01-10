@@ -355,16 +355,16 @@ TextEditor::IAssistProposal *LuaCompletionAssistProcessor::tryCreateFunctionHint
     {
         QVector<LuaFunctionHintProposalModel::Function> functions;
 
-        QList<QSharedPointer<LuaFunctionFilter::FunctionEntry>> parsedFunctions = LuaFunctionFilter::parseFunctions(interface->textDocument()->toPlainText());
-        for (QSharedPointer<LuaFunctionFilter::FunctionEntry> &parsedFunction : parsedFunctions)
+        QList<QSharedPointer<FunctionParser::Function>> parsedFunctions = FunctionParser::parseFunctionsInFile(interface->fileName());
+        for (QSharedPointer<FunctionParser::Function> &parsedFunction : parsedFunctions)
         {
             if (parsedFunction->functionName == functionName)
             {
                 LuaFunctionHintProposalModel::Function function;
 
-                if (parsedFunction->surroundingType == LuaFunctionFilter::SurroundingType::Module)
+                if (parsedFunction->surroundingType == FunctionParser::Function::SurroundingType::Module)
                     function.m_functionName = parsedFunction->surroundingName + QString(".") + parsedFunction->functionName;
-                else if (parsedFunction->surroundingType == LuaFunctionFilter::SurroundingType::Object)
+                else if (parsedFunction->surroundingType == FunctionParser::Function::SurroundingType::Object)
                     function.m_functionName = parsedFunction->surroundingName + QString(":") + parsedFunction->functionName;
                 else
                     function.m_functionName = parsedFunction->functionName;
@@ -445,6 +445,16 @@ TextEditor::GenericProposal *LuaCompletionAssistProcessor::createContentProposal
     RecursiveClassMembers targetIds;
     Scanner::TakeBackwardsState(interface->textDocument()->findBlockByLineNumber(interface->textDocument()->findBlock(interface->position()).firstLineNumber()-1),&targetIds);
 
+    QStringList functionsInDocument;
+    if (isFunctionCompletion || isWordCompletion)
+    {
+        FunctionParser::FunctionList parsedFunctions = FunctionParser::parseFunctionsInFile(interface->fileName());
+        for (QSharedPointer<FunctionParser::Function> &parsedFunction : parsedFunctions)
+        {
+            functionsInDocument.append(parsedFunction->functionName);
+        }
+    }
+
     if(isMemberCompletion || isFunctionCompletion)
     {
         RecursiveClassMembers writtenTargetId;
@@ -465,16 +475,19 @@ TextEditor::GenericProposal *LuaCompletionAssistProcessor::createContentProposal
         {
             for(auto it = mem->begin(); it != mem->end(); ++it)
             {
-                variables.append({it->key(),4});
+                variables.append({it->key(), 4});
             }
         }
         for(auto it = targetIds.begin(); it != targetIds.end(); ++it)
         {
-            globVariables.append({it->key(),3});
+            globVariables.append({it->key(), 3});
         }
 
         if (isFunctionCompletion)
+        {
             globVariables.append({predefinedCalls, 2});
+            globVariables.append({functionsInDocument, 2});
+        }
 
         if (isMemberCompletion)
             globVariables.append({predefinedMembers, 2});
@@ -492,11 +505,18 @@ TextEditor::GenericProposal *LuaCompletionAssistProcessor::createContentProposal
                 variables.append({it->key(),5});
         }
 
+        for (const QString &str : functionsInDocument)
+        {
+            if (str.toLower().startsWith(lowerWord))
+                variables.append({str, 4});
+        }
+
         for (const QString &str : predefinedWords)
         {
             if (str.toLower().startsWith(lowerWord))
                 variables.append({str, 4});
         }
+
         for (const QString &str : g_special)
         {
             if (str.toLower().startsWith(lowerWord))

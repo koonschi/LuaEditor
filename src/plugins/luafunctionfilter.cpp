@@ -6,64 +6,6 @@
 
 #include <QStringMatcher>
 
-QList<QSharedPointer<LuaFunctionFilter::FunctionEntry> > LuaFunctionFilter::parseFunctions(const QString &text)
-{
-    QList<QSharedPointer<LuaFunctionFilter::FunctionEntry> > functions;
-
-    QString searchExpression(R"(.*function\s*((.*)\s*(\(.*\))).*)");
-
-    QStringList parts = text.split(QChar('\n'));
-    for (int i = 0; i < parts.size(); ++i)
-    {
-        QRegExp regex(searchExpression);
-        regex.setMinimal(true);
-
-        if (regex.indexIn(parts[i]) != -1)
-        {
-            QSharedPointer<FunctionEntry> entry(new FunctionEntry());
-
-            QStringList capturedTexts = regex.capturedTexts();
-            QString functionName = capturedTexts[2];
-
-            if (functionName.trimmed().isEmpty())
-                continue;
-
-            QChar splitChar('\0');
-            if (functionName.contains(QChar(':')))
-            {
-                entry->surroundingType = SurroundingType::Object;
-                splitChar = QChar(':');
-            }
-            else if (functionName.contains(QChar('.')))
-            {
-                entry->surroundingType = SurroundingType::Module;
-                splitChar = QChar('.');
-            }
-
-            if (splitChar != QChar('\0'))
-            {
-                auto parts = functionName.split(splitChar);
-                functionName = parts.last();
-                for (int j = 0; j < parts.size() - 1; ++j)
-                {
-                    if (j > 0)
-                        entry->surroundingName += QString(".");
-
-                    entry->surroundingName += parts[j].trimmed();
-                }
-            }
-
-            entry->line = i + 1;
-            entry->fullFunction = capturedTexts[1].trimmed();
-            entry->functionName = functionName.trimmed();
-            entry->arguments = capturedTexts[3].trimmed();
-
-            functions.push_back(entry);
-        }
-    }
-
-    return functions;
-}
 
 LuaFunctionFilter::LuaFunctionFilter()
     : m_functionIcon(QLatin1String(":/LuaEditor/images/func.png"))
@@ -102,7 +44,7 @@ QList<Core::LocatorFilterEntry> LuaFunctionFilter::matchesFor(
 
     QSet<QString> functions;
 
-    foreach (QSharedPointer<FunctionEntry> info, itemsOfCurrentDocument())
+    foreach (QSharedPointer<Function> info, itemsOfCurrentDocument())
     {
         if (future.isCanceled())
             break;
@@ -118,9 +60,9 @@ QList<Core::LocatorFilterEntry> LuaFunctionFilter::matchesFor(
 
             if (functions.contains(info->functionName) && !info->surroundingName.isEmpty())
             {
-                if (info->surroundingType == SurroundingType::Module)
+                if (info->surroundingType == Function::SurroundingType::Module)
                     name = info->surroundingName + QString(".") + info->functionName;
-                else if (info->surroundingType == SurroundingType::Object)
+                else if (info->surroundingType == Function::SurroundingType::Object)
                     name = info->surroundingName + QString(":") + info->functionName;
             }
 
@@ -143,7 +85,7 @@ QList<Core::LocatorFilterEntry> LuaFunctionFilter::matchesFor(
 
 void LuaFunctionFilter::accept(Core::LocatorFilterEntry selection) const
 {
-    QSharedPointer<FunctionEntry> info = qvariant_cast<QSharedPointer<FunctionEntry>>(selection.internalData);
+    QSharedPointer<Function> info = qvariant_cast<QSharedPointer<Function>>(selection.internalData);
     Core::EditorManager::openEditorAt(info->fileName, info->line);
 }
 
@@ -218,18 +160,18 @@ void LuaFunctionFilter::onEditorAboutToClose(Core::IEditor *editorAboutToClose)
         m_currentEditor = nullptr;
 }
 
-QList<QSharedPointer<LuaFunctionFilter::FunctionEntry> > LuaFunctionFilter::itemsOfCurrentDocument()
+QList<QSharedPointer<LuaFunctionFilter::Function> > LuaFunctionFilter::itemsOfCurrentDocument()
 {
     QMutexLocker locker(&m_mutex);
 
     if (m_currentFileName.isEmpty())
-        return QList<QSharedPointer<FunctionEntry>>();
+        return QList<QSharedPointer<Function>>();
 
     if (m_itemsOfCurrentDoc.isEmpty())
     {
-        m_itemsOfCurrentDoc = parseFunctions(m_currentContents);
+        m_itemsOfCurrentDoc = LuaEditor::Internal::FunctionParser::parseFunctions(m_currentContents);
 
-        for (QSharedPointer<LuaFunctionFilter::FunctionEntry> &function : m_itemsOfCurrentDoc)
+        for (QSharedPointer<LuaFunctionFilter::Function> &function : m_itemsOfCurrentDoc)
         {
             function->fileName = m_currentFileName;
         }
