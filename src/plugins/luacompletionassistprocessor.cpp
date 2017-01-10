@@ -15,6 +15,7 @@
 #include "luacompletionassistprocessor.h"
 #include "luafunctionhintproposalmodel.h"
 #include "luafunctionfilter.h"
+#include "predefineddocumentationparser.h"
 #include "scanner/luascanner.h"
 #include <texteditor/codeassist/assistinterface.h>
 #include <texteditor/codeassist/assistproposalitem.h>
@@ -100,167 +101,13 @@ LuaCompletionAssistProcessor::LuaCompletionAssistProcessor()
 	  m_memIcon(QLatin1String(":/LuaEditor/images/attributes.png")),
       m_keywordIcon(QLatin1String(":/LuaEditor/images/keyword.png"))
 {
-    readWords(predefinedWords, QDir::homePath() + QString::fromLatin1("/.avorion/documentation/completion/words"));
-    readMembers(predefinedMembers, predefinedMemberInfos, QDir::homePath() + QString::fromLatin1("/.avorion/documentation/completion/members"));
-    readCalls(predefinedCalls, predefinedFunctionInfosByFunction, QDir::homePath() + QString::fromLatin1("/.avorion/documentation/completion/calls"));
+    PredefinedDocumentationParser::readWords(predefinedWords, QDir::homePath() + QString::fromLatin1("/.avorion/documentation/completion/words"));
+    PredefinedDocumentationParser::readMembers(predefinedMembers, predefinedMemberInfos, QDir::homePath() + QString::fromLatin1("/.avorion/documentation/completion/members"));
+    PredefinedDocumentationParser::readCalls(predefinedCalls, predefinedFunctionInfosByFunction, predefinedFunctionInfosByObject, QDir::homePath() + QString::fromLatin1("/.avorion/documentation/completion/calls"));
 }
 
 LuaCompletionAssistProcessor::~LuaCompletionAssistProcessor()
 {
-}
-
-void LuaCompletionAssistProcessor::readMembers(QStringList &words, QMap<QString, QStringList> &members, QString path)
-{
-    QFile ifile(path);
-    if (!ifile.exists())
-        return;
-
-    static QMap<QString, std::tuple<QDateTime, QStringList, QMap<QString, QStringList>>> dates;
-
-    auto it = dates.find(path);
-    if (it != dates.end())
-    {
-        QFileInfo info(path);
-        const QDateTime &read = std::get<0>(*it);
-
-        // if the read happened later than the last modification, it's up to date
-        if (info.lastModified() < read)
-        {
-            words = std::get<1>(*it);
-            members = std::get<2>(*it);
-            return;
-        }
-    }
-
-    words.clear();
-    members.clear();
-
-    // read whole content
-    ifile.open(QIODevice::ReadOnly | QIODevice::Text);
-    QString content = QString::fromLatin1(ifile.readAll());
-    ifile.close();
-
-    // parse function signatures
-    auto lines = content.split(QString::fromLatin1("\n"));
-    lines.removeAll(QString(""));
-
-    for (const QString &str : lines)
-    {
-        QStringList parts = str.split(" ");
-        if (parts.isEmpty()) continue;
-
-        // first item is the object type
-        QString type = parts.front();
-        parts.pop_front();
-
-        // rest are the members
-        members[type] = parts;
-
-        for (QString &str : parts)
-        {
-            words.push_back(str);
-        }
-    }
-
-
-    // update cache
-    dates[path] = std::make_tuple(QDateTime::currentDateTime(), words, members);
-}
-
-void LuaCompletionAssistProcessor::readCalls(QStringList &words, QMap<QString, QVector<Function>> &functions, QString path)
-{
-    QFile ifile(path);
-    if (!ifile.exists())
-        return;
-
-    static QMap<QString, std::tuple<QDateTime, QStringList, QMap<QString, QVector<Function>>>> dates;
-
-    auto it = dates.find(path);
-    if (it != dates.end())
-    {
-        QFileInfo info(path);
-        const QDateTime &read = std::get<0>(*it);
-
-        // if the read happened later than the last modification, it's up to date
-        if (info.lastModified() < read)
-        {
-            words = std::get<1>(*it);
-            functions = std::get<2>(*it);
-            return;
-        }
-    }
-
-    words.clear();
-    functions.clear();
-
-    // read whole content
-    ifile.open(QIODevice::ReadOnly | QIODevice::Text);
-    QString content = QString::fromLatin1(ifile.readAll());
-    ifile.close();
-
-    // parse function signatures
-    auto lines = content.split(QString::fromLatin1("\n"));
-    lines.removeAll(QString(""));
-
-    for (const QString &str : lines)
-    {
-        QStringList parts = str.split("|");
-        if (parts.isEmpty()) continue;
-
-        Function function;
-        function.m_functionName = parts.at(0);
-        if (parts.size() > 1)
-            function.m_returnType = parts.at(1);
-
-        for (int i = 2; i < parts.size(); ++i)
-            function.m_arguments.push_back(parts.at(i));
-
-        QString functionNameNoObject = parts.at(0).split(":").back();
-
-        functions[functionNameNoObject].push_back(function);
-        words.push_back(functionNameNoObject);
-    }
-
-
-    // update cache
-    dates[path] = std::make_tuple(QDateTime::currentDateTime(), words, functions);
-}
-
-void LuaCompletionAssistProcessor::readWords(QStringList &out, QString path)
-{
-    QFile ifile(path);
-    if (!ifile.exists())
-        return;
-
-    static QMap<QString, std::pair<QDateTime, QStringList>> dates;
-
-    auto it = dates.find(path);
-    if (it != dates.end())
-    {
-        QFileInfo info(path);
-        const QDateTime &read = it->first;
-
-        // if the read happened later than the last modification, it's up to date
-        if (info.lastModified() < read)
-        {
-            out = it->second;
-            return;
-        }
-    }
-
-    ifile.open(QIODevice::ReadOnly | QIODevice::Text);
-
-    // read whole content
-    QString content = QString::fromLatin1(ifile.readAll());
-
-    ifile.close();
-
-    // get words
-    out = content.split(QString::fromLatin1("\n"));
-    out.removeAll(QString(""));
-
-    // update cache
-    dates[path] = std::make_pair(QDateTime::currentDateTime(), out);
 }
 
 static TextEditor::AssistProposalItem* createCompletionItem(QString const& text, QIcon const& icon, int order =0)
@@ -527,14 +374,12 @@ TextEditor::GenericProposal *LuaCompletionAssistProcessor::createContentProposal
 
         if (isFunctionCompletion)
         {
-            for (auto it = predefinedFunctionInfosByFunction.begin(); it != predefinedFunctionInfosByFunction.end(); ++it)
+            auto it = predefinedFunctionInfosByObject.find(currentMember);
+            if (it != predefinedFunctionInfosByObject.end())
             {
                 for (const Function &parsedFunction : it.value())
                 {
-                    if (parsedFunction.m_functionName.startsWith(currentMember))
-                    {
-                        perfectContextMatches.push_back(it.key());
-                    }
+                    perfectContextMatches.push_back(parsedFunction.m_functionName);
                 }
             }
         }

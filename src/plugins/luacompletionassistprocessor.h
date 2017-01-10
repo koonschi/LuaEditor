@@ -49,10 +49,11 @@ public:
     QStringList predefinedCalls;
     QStringList predefinedWords;
     QMap<QString, QVector<Function>> predefinedFunctionInfosByFunction;
+    QMap<QString, QVector<Function>> predefinedFunctionInfosByObject;
     QMap<QString, QStringList> predefinedMemberInfos;
 
     void readWords(QStringList &out, QString path);
-    void readCalls(QStringList &words, QMap<QString, QVector<Function>> &functions, QString path);
+    void readCalls(QStringList &words, QMap<QString, QVector<Function>> &functionsByFunction, QMap<QString, QVector<Function>> &functionsByObject, QString path);
     void readMembers(QStringList &words, QMap<QString, QStringList> &members, QString path);
 
     TextEditor::GenericProposal *createContentProposal(const TextEditor::AssistInterface *interface);
