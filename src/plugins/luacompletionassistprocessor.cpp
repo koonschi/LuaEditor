@@ -100,13 +100,71 @@ LuaCompletionAssistProcessor::LuaCompletionAssistProcessor()
 	  m_memIcon(QLatin1String(":/LuaEditor/images/attributes.png")),
       m_keywordIcon(QLatin1String(":/LuaEditor/images/keyword.png"))
 {
-    readWords(predefinedMembers, QDir::homePath() + QString::fromLatin1("/.avorion/documentation/completion/members"));
     readWords(predefinedWords, QDir::homePath() + QString::fromLatin1("/.avorion/documentation/completion/words"));
-    readCalls(predefinedCalls, predefinedFunctionInfos, QDir::homePath() + QString::fromLatin1("/.avorion/documentation/completion/calls"));
+    readMembers(predefinedMembers, predefinedMemberInfos, QDir::homePath() + QString::fromLatin1("/.avorion/documentation/completion/members"));
+    readCalls(predefinedCalls, predefinedFunctionInfosByFunction, QDir::homePath() + QString::fromLatin1("/.avorion/documentation/completion/calls"));
 }
 
 LuaCompletionAssistProcessor::~LuaCompletionAssistProcessor()
 {
+}
+
+void LuaCompletionAssistProcessor::readMembers(QStringList &words, QMap<QString, QStringList> &members, QString path)
+{
+    QFile ifile(path);
+    if (!ifile.exists())
+        return;
+
+    static QMap<QString, std::tuple<QDateTime, QStringList, QMap<QString, QStringList>>> dates;
+
+    auto it = dates.find(path);
+    if (it != dates.end())
+    {
+        QFileInfo info(path);
+        const QDateTime &read = std::get<0>(*it);
+
+        // if the read happened later than the last modification, it's up to date
+        if (info.lastModified() < read)
+        {
+            words = std::get<1>(*it);
+            members = std::get<2>(*it);
+            return;
+        }
+    }
+
+    words.clear();
+    members.clear();
+
+    // read whole content
+    ifile.open(QIODevice::ReadOnly | QIODevice::Text);
+    QString content = QString::fromLatin1(ifile.readAll());
+    ifile.close();
+
+    // parse function signatures
+    auto lines = content.split(QString::fromLatin1("\n"));
+    lines.removeAll(QString(""));
+
+    for (const QString &str : lines)
+    {
+        QStringList parts = str.split(" ");
+        if (parts.isEmpty()) continue;
+
+        // first item is the object type
+        QString type = parts.front();
+        parts.pop_front();
+
+        // rest are the members
+        members[type] = parts;
+
+        for (QString &str : parts)
+        {
+            words.push_back(str);
+        }
+    }
+
+
+    // update cache
+    dates[path] = std::make_tuple(QDateTime::currentDateTime(), words, members);
 }
 
 void LuaCompletionAssistProcessor::readCalls(QStringList &words, QMap<QString, QVector<Function>> &functions, QString path)
@@ -383,8 +441,8 @@ TextEditor::IAssistProposal *LuaCompletionAssistProcessor::tryCreateFunctionHint
         }
 
         // check all predefined functions
-        auto it = predefinedFunctionInfos.find(functionName);
-        if (it != predefinedFunctionInfos.end())
+        auto it = predefinedFunctionInfosByFunction.find(functionName);
+        if (it != predefinedFunctionInfosByFunction.end())
         {
             for (const Function &function : *it)
             {
@@ -453,13 +511,10 @@ TextEditor::GenericProposal *LuaCompletionAssistProcessor::createContentProposal
 
         // currentMember holds a string like "Foo" when invoked here: Foo:     or Foo.
         //                                                                ^           ^
-        std::cout << currentMember.toStdString() << std::endl;
 
         // we accept Foo(): as well
         if (currentMember.endsWith("()"))
             currentMember = currentMember.left(currentMember.size() - 2);
-
-        std::cout << currentMember.toStdString() << std::endl;
 
         FunctionParser::FunctionList parsedFunctions = FunctionParser::parseFunctionsInFile(interface->fileName());
         for (QSharedPointer<FunctionParser::Function> &parsedFunction : parsedFunctions)
@@ -472,7 +527,7 @@ TextEditor::GenericProposal *LuaCompletionAssistProcessor::createContentProposal
 
         if (isFunctionCompletion)
         {
-            for (auto it = predefinedFunctionInfos.begin(); it != predefinedFunctionInfos.end(); ++it)
+            for (auto it = predefinedFunctionInfosByFunction.begin(); it != predefinedFunctionInfosByFunction.end(); ++it)
             {
                 for (const Function &parsedFunction : it.value())
                 {
@@ -486,7 +541,7 @@ TextEditor::GenericProposal *LuaCompletionAssistProcessor::createContentProposal
 
         if (isMemberCompletion)
         {
-
+            perfectContextMatches.append(predefinedMemberInfos[currentMember]);
         }
 
         isPerfectMatch = !perfectContextMatches.isEmpty();
