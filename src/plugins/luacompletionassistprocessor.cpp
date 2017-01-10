@@ -22,6 +22,7 @@
 #include <QTextCursor>
 #include <QTextDocument>
 #include <QTextStream>
+#include <QDateTime>
 #include <QDir>
 #include <QByteArray>
 
@@ -97,33 +98,53 @@ LuaCompletionAssistProcessor::LuaCompletionAssistProcessor()
 	  m_varIcon(QLatin1String(":/LuaEditor/images/var.png")),
 	  m_functionIcon(QLatin1String(":/LuaEditor/images/func.png")),
 	  m_memIcon(QLatin1String(":/LuaEditor/images/attributes.png")),
-	  m_keywordIcon(QLatin1String(":/LuaEditor/images/keyword.png"))
+      m_keywordIcon(QLatin1String(":/LuaEditor/images/keyword.png"))
 {
     readWords(predefinedMembers, QDir::homePath() + QString::fromLatin1("/.avorion/documentation/completion/members"));
-    readWords(predefinedCalls, QDir::homePath() + QString::fromLatin1("/.avorion/documentation/completion/calls"));
     readWords(predefinedWords, QDir::homePath() + QString::fromLatin1("/.avorion/documentation/completion/words"));
+    readWords(predefinedCalls, QDir::homePath() + QString::fromLatin1("/.avorion/documentation/completion/calls"));
+//    readCalls(predefinedCalls, predefinedCallInfo, QDir::homePath() + QString::fromLatin1("/.avorion/documentation/completion/calls"));
 }
 
 LuaCompletionAssistProcessor::~LuaCompletionAssistProcessor()
 {
 }
 
-void LuaCompletionAssistProcessor::readWords(QStringList &list, QString path)
+void LuaCompletionAssistProcessor::readWords(QStringList &out, QString path)
 {
     QFile ifile(path);
     if (!ifile.exists())
         return;
+
+    static QMap<QString, std::pair<QDateTime, QStringList>> dates;
+
+    auto it = dates.find(path);
+    if (it != dates.end())
+    {
+        QFileInfo info(path);
+        const QDateTime &read = it->first;
+
+        // if the read happened later than the last modification, it's up to date
+        if (info.lastModified() < read)
+        {
+            out = it->second;
+            return;
+        }
+    }
 
     ifile.open(QIODevice::ReadOnly | QIODevice::Text);
 
     // read whole content
     QString content = QString::fromLatin1(ifile.readAll());
 
-    // extract words
-    list = content.split(QString::fromLatin1("\n"));
-    list.removeAll(QString::fromLatin1(""));
-
     ifile.close();
+
+    // get words
+    out = content.split(QString::fromLatin1("\n"));
+    out.removeAll(QString(""));
+
+    // update cache
+    dates[path] = std::make_pair(QDateTime::currentDateTime(), out);
 }
 
 static TextEditor::AssistProposalItem* createCompletionItem(QString const& text, QIcon const& icon, int order =0)

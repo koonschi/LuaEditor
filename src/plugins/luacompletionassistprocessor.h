@@ -44,7 +44,7 @@ public:
     QStringList predefinedCalls;
     QStringList predefinedWords;
 
-    void readWords(QStringList &list, QString path);
+    void readWords(QStringList &out, QString path);
     TextEditor::GenericProposal *createContentProposal(const TextEditor::AssistInterface *interface);
     TextEditor::IAssistProposal *tryCreateFunctionHintProposal(const TextEditor::AssistInterface *interface);
 };
