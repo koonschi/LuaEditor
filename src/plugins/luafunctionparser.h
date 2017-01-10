@@ -4,6 +4,8 @@
 #include <QString>
 #include <QSharedPointer>
 #include <QList>
+#include <QFile>
+#include <QDir>
 
 namespace LuaEditor { namespace Internal {
 
@@ -33,7 +35,12 @@ public:
     typedef QList<QSharedPointer<Function>> FunctionList;
 
     static FunctionList parseFunctions(const QString &text);
+    static FunctionList parseFunctionsInFileNoRecursion(const QString &path);
     static FunctionList parseFunctionsInFile(const QString &path);
+
+    static QStringList findDependencies(const QString &path);
+    static QStringList parseRequiredFiles(QFile &ifile);
+    static QString requireExists(QDir directory, QStringList packagePaths, QString require);
 };
 
 
