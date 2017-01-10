@@ -107,7 +107,7 @@ HEADERS += luaeditorplugin.h \
 ## set the QTC_SOURCE environment variable to override the setting here
 QTCREATOR_SOURCES = $$(QTC_SOURCE)
 # isEmpty(QTCREATOR_SOURCES):QTCREATOR_SOURCES="/path/to/qt-creator-source"
-isEmpty(QTCREATOR_SOURCES):QTCREATOR_SOURCES="/home/koonschi/devel/qt-creator"
+isEmpty(QTCREATOR_SOURCES):QTCREATOR_SOURCES="/home/koonschi/devel/qt-creator-4.2.0"
 
 ## set the QTC_BUILD environment variable to override the setting here
 IDE_BUILD_TREE = $$(QTC_BUILD)
@@ -146,4 +146,7 @@ OTHER_FILES += \
 
 RESOURCES += \
     luaeditor.qrc
+
+DISTFILES += \
+    sandbox.lua
 

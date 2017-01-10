@@ -29,6 +29,8 @@ public:
         int line = 0;
     };
 
+    static QList<QSharedPointer<FunctionEntry>> parseFunctions(const QString &text);
+
 public:
     explicit LuaFunctionFilter();
     ~LuaFunctionFilter() {}

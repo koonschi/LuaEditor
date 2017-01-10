@@ -13,6 +13,8 @@
 */
 
 #include "luacompletionassistprocessor.h"
+#include "luafunctionhintproposalmodel.h"
+#include "luafunctionfilter.h"
 #include "scanner/luascanner.h"
 #include <texteditor/codeassist/assistinterface.h>
 #include <texteditor/codeassist/assistproposalitem.h>
@@ -24,6 +26,9 @@
 #include <QByteArray>
 
 #include <iostream>
+
+#include <texteditor/codeassist/functionhintproposal.h>
+#include <texteditor/codeassist/ifunctionhintproposalmodel.h>
 
 namespace LuaEditor { namespace Internal {
 
@@ -124,7 +129,9 @@ void LuaCompletionAssistProcessor::readWords(QStringList &list, QString path)
 static TextEditor::AssistProposalItem* createCompletionItem(QString const& text, QIcon const& icon, int order =0)
 {
 	TextEditor::AssistProposalItem* item = new TextEditor::AssistProposalItem;
-	item->setText(text); item->setIcon(icon); item->setOrder(order);
+    item->setText(text);
+    item->setIcon(icon);
+    item->setOrder(order);
 	return item;
 }
 
@@ -140,75 +147,242 @@ struct PriorityList {
 
 TextEditor::IAssistProposal* LuaCompletionAssistProcessor::perform(const TextEditor::AssistInterface *interface)
 {
-	if(interface->reason() == TextEditor::IdleEditor && !acceptsIdleEditor())
-		return 0;
+    if (TextEditor::IAssistProposal *proposal = tryCreateFunctionHintProposal(interface))
+        return proposal;
 
-	int pos = interface->position() - 1;
-	QChar ch = interface->characterAt(pos);
+    return createContentProposal(interface);
+}
+
+TextEditor::IAssistProposal *LuaCompletionAssistProcessor::tryCreateFunctionHintProposal(const TextEditor::AssistInterface *interface)
+{
+    int pos = interface->position() - 1;
+    QChar ch = interface->characterAt(pos);
+
+    while (ch.isSpace())
+    {
+        ch = interface->characterAt(--pos);
+    }
+
+    if (ch != QChar(',') && ch != QChar('('))
+        return nullptr;
+
+    QString functionName;
+    bool isParameterList = false;
+    int beginningOfFunctionName = pos;
+
+    // check if we're inside a function parameter list
+    // walk backwards, count parentheses
+    {
+        int p = pos;
+        int parentheses = 0;
+        int brackets = 0;
+        int curly = 0;
+
+        while (p >= 0)
+        {
+            QChar c = interface->characterAt(p);
+
+            if (c == QChar(')')) parentheses++;
+            else if (c == QChar('(')) parentheses--;
+            else if (c == QChar(']')) brackets++;
+            else if (c == QChar('[')) brackets--;
+            else if (c == QChar('}')) curly++;
+            else if (c == QChar('{')) curly--;
+
+            p--;
+
+            if (curly == 0 && brackets == 0 && parentheses == -1)
+            {
+                break;
+            }
+        }
+
+        if (curly == 0 && brackets == 0 && parentheses == -1)
+        {
+            // we're now outside the parameter list
+            // characters that are okay now are: . : spaces letters and numbers
+            bool lastWasWord = false;
+            QVector<QString> words;
+            QString currentWord;
+
+            while (p >= 0)
+            {
+                QChar c = interface->characterAt(p);
+                p--;
+
+                // everything else cancels
+                if (!(c.isSpace() || c.isLetterOrNumber()
+                        || c == QChar('_')
+                        || c == QChar('.')
+                        || c == QChar(':')))
+                {
+                    // push what we collected so far
+                    if (words.isEmpty()) beginningOfFunctionName = p + 1;
+                    words.push_back(currentWord);
+                    break;
+                }
+
+                // whitespace indicates end of a word
+                if (c.isSpace())
+                {
+                    if (!currentWord.isEmpty())
+                    {
+                        if (words.isEmpty()) beginningOfFunctionName = p + 1;
+                        words.push_back(currentWord);
+                        currentWord.clear();
+
+                        if (lastWasWord) break;
+                        lastWasWord = true;
+                    }
+
+                    // apart from ending words, skip whitespaces
+                    continue;
+                }
+
+                if (c.isLetterOrNumber() || c == QChar('_'))
+                {
+                    currentWord.prepend(c);
+                }
+                else
+                {
+                    // separators end words as well
+                    if (!currentWord.isEmpty())
+                    {
+                        if (words.isEmpty()) beginningOfFunctionName = p + 1;
+                        words.push_back(currentWord);
+                        currentWord.clear();
+
+                        if (lastWasWord) break;
+                        lastWasWord = true;
+                    }
+
+                    if (!lastWasWord) break;
+                    lastWasWord = false;
+                }
+            }
+
+            // if the first or last word is "function" we're inside a function declaration parameter list
+            if (!words.isEmpty()
+                    && words.front() != QString("function")
+                    && words.back() != QString("function"))
+            {
+                functionName = words.front();
+                isParameterList = true;
+            }
+        }
+    }
+
+    if (isParameterList)
+    {
+        QVector<LuaFunctionHintProposalModel::Function> functions;
+
+        QList<QSharedPointer<LuaFunctionFilter::FunctionEntry>> parsedFunctions = LuaFunctionFilter::parseFunctions(interface->textDocument()->toPlainText());
+        for (QSharedPointer<LuaFunctionFilter::FunctionEntry> &parsedFunction : parsedFunctions)
+        {
+            if (parsedFunction->functionName == functionName)
+            {
+                LuaFunctionHintProposalModel::Function function;
+
+                if (parsedFunction->surroundingType == LuaFunctionFilter::SurroundingType::Module)
+                    function.m_functionName = parsedFunction->surroundingName + QString(".") + parsedFunction->functionName;
+                else if (parsedFunction->surroundingType == LuaFunctionFilter::SurroundingType::Object)
+                    function.m_functionName = parsedFunction->surroundingName + QString(":") + parsedFunction->functionName;
+                else
+                    function.m_functionName = parsedFunction->functionName;
+
+                QString trimmed = parsedFunction->arguments.trimmed();
+                trimmed = trimmed.mid(1, trimmed.size() - 2);
+
+                auto parts = trimmed.split(QChar(','));
+                for (const QString &part : parts)
+                {
+                    function.m_arguments.push_back(part.trimmed());
+                }
+
+                functions.push_back(function);
+            }
+        }
+
+        TextEditor::IFunctionHintProposalModel *model =
+                new LuaFunctionHintProposalModel(std::move(functions));
+
+        return new TextEditor::FunctionHintProposal(beginningOfFunctionName + 1, model);
+    }
+
+    return nullptr;
+}
+
+TextEditor::GenericProposal *LuaCompletionAssistProcessor::createContentProposal(const TextEditor::AssistInterface *interface)
+{
+    if(interface->reason() == TextEditor::IdleEditor && !acceptsIdleEditor())
+        return 0;
+
+    int pos = interface->position() - 1;
+    QChar ch = interface->characterAt(pos);
 
     while(ch.isSpace())
-	{
-		ch = interface->characterAt(--pos);
-	}
+    {
+        ch = interface->characterAt(--pos);
+    }
 
-	bool isFunctionCall = (ch == QLatin1Char('(')) || (ch == QLatin1Char(','));
-	bool isMemberCompletion = (ch == QLatin1Char('.'));
+    bool isFunctionCall = (ch == QLatin1Char('(')) || (ch == QLatin1Char(','));
+    bool isMemberCompletion = (ch == QLatin1Char('.'));
     bool isFunctionCompletion = (ch == QLatin1Char(':'));
     bool isWordCompletion = !isFunctionCall && !isMemberCompletion && !isFunctionCompletion;
 
-	QString currentMember;
+    QString currentMember;
 
-	{
-		int cpos = pos-1;
-		while((cpos >= 0) && interface->characterAt(cpos).isSpace())
-			--cpos;
-		int cpos_end = cpos;
-		
-		while((cpos >= 0) && (interface->characterAt(cpos).isLetterOrNumber() || interface->characterAt(cpos) == QLatin1Char('_')))
-			--cpos;
-		++cpos; ++cpos_end;
-		
+    {
+        int cpos = pos-1;
+        while((cpos >= 0) && interface->characterAt(cpos).isSpace())
+            --cpos;
+        int cpos_end = cpos;
+
+        while((cpos >= 0) && (interface->characterAt(cpos).isLetterOrNumber() || interface->characterAt(cpos) == QLatin1Char('_')))
+            --cpos;
+        ++cpos; ++cpos_end;
+
         if (isWordCompletion)
             ++cpos_end;
 
         currentMember = interface->textAt(cpos, cpos_end-cpos);
-	}
+    }
 
-	QList<PriorityList> globVariables;
-	QList<PriorityList> variables;
-	QList<PriorityList> keywords;
-	QList<PriorityList> magics;
+    QList<PriorityList> globVariables;
+    QList<PriorityList> variables;
+    QList<PriorityList> keywords;
+    QList<PriorityList> magics;
 
-	RecursiveClassMembers targetIds;
-	Scanner::TakeBackwardsState(interface->textDocument()->findBlockByLineNumber(interface->textDocument()->findBlock(interface->position()).firstLineNumber()-1),&targetIds);
-	
+    RecursiveClassMembers targetIds;
+    Scanner::TakeBackwardsState(interface->textDocument()->findBlockByLineNumber(interface->textDocument()->findBlock(interface->position()).firstLineNumber()-1),&targetIds);
+
     if(isMemberCompletion || isFunctionCompletion)
-	{
-		RecursiveClassMembers writtenTargetId;
-		Scanner::TakeBackwardsMember(interface->textDocument()->findBlock(interface->position()),writtenTargetId);
-		
-		RecursiveClassMembers* deepest = &writtenTargetId;
-		for(;;)
-		{
-			RecursiveClassMembers::iterator it = deepest->begin();
-			if(it == deepest->end())
-				break;
-			deepest = &(*it);
-		}
-		
-		RecursiveClassMembers* mem = targetIds.matchesChilds(deepest->buildDirectory());
-				
-		if(mem)
-		{
-			for(auto it = mem->begin(); it != mem->end(); ++it)
-			{
+    {
+        RecursiveClassMembers writtenTargetId;
+        Scanner::TakeBackwardsMember(interface->textDocument()->findBlock(interface->position()),writtenTargetId);
+
+        RecursiveClassMembers* deepest = &writtenTargetId;
+        for(;;)
+        {
+            RecursiveClassMembers::iterator it = deepest->begin();
+            if(it == deepest->end())
+                break;
+            deepest = &(*it);
+        }
+
+        RecursiveClassMembers* mem = targetIds.matchesChilds(deepest->buildDirectory());
+
+        if(mem)
+        {
+            for(auto it = mem->begin(); it != mem->end(); ++it)
+            {
                 variables.append({it->key(),4});
-			}
-		}
-		for(auto it = targetIds.begin(); it != targetIds.end(); ++it)
-		{
+            }
+        }
+        for(auto it = targetIds.begin(); it != targetIds.end(); ++it)
+        {
             globVariables.append({it->key(),3});
-		}
+        }
 
         if (isFunctionCompletion)
             globVariables.append({predefinedCalls, 2});
@@ -216,20 +390,9 @@ TextEditor::IAssistProposal* LuaCompletionAssistProcessor::perform(const TextEdi
         if (isMemberCompletion)
             globVariables.append({predefinedMembers, 2});
 
-		globVariables.append({g_special,1});
-		magics.append({g_magics,0});
-	}
-	else if(isFunctionCall)
-	{
-		for(auto it = targetIds.begin(); it != targetIds.end(); ++it)
-		{
-            variables.append({it->key(),3});
-		}
-
-        variables.append({predefinedCalls, 2});
-		variables.append({g_special,1});
-		keywords.append({g_keyword_fcall,0});
-	}
+        globVariables.append({g_special,1});
+        magics.append({g_magics,0});
+    }
     else if (isWordCompletion)
     {
         QString lowerWord = currentMember.toLower();
@@ -266,80 +429,81 @@ TextEditor::IAssistProposal* LuaCompletionAssistProcessor::perform(const TextEdi
                 variables.append({str, 0});
         }
     }
-	else
-	{
-		for(auto it = targetIds.begin(); it != targetIds.end(); ++it)
-		{
-			variables.append({it->key(),4});
-		}
-		variables.append({g_special,3});
-		keywords.append({g_types,2});
-		keywords.append({g_keyword_beginning,1});
-		keywords.append({g_keyword_fcall,0});
-	}
-	
+    else
+    {
+        for(auto it = targetIds.begin(); it != targetIds.end(); ++it)
+        {
+            variables.append({it->key(),4});
+        }
+        variables.append({g_special,3});
+        keywords.append({g_types,2});
+        keywords.append({g_keyword_beginning,1});
+        keywords.append({g_keyword_fcall,0});
+    }
+
     QList<TextEditor::AssistProposalItemInterface*> m_completions;
-	
-	QSet<QString> m_usedSuggestions;
-	
-	for(auto it = variables.begin(); it != variables.end(); ++it)
-	{
-		PriorityList const& plit = *it;
-		for(auto itb = plit.m_str.begin(); itb != plit.m_str.end(); ++itb)
-		{
-			if(!m_usedSuggestions.contains(*itb))
-			{
-				m_completions << createCompletionItem(*itb, m_memIcon, plit.m_pr);
-				m_usedSuggestions.insert(*itb);
-			}
-		}
-	}
-	for(auto it = globVariables.begin(); it != globVariables.end(); ++it)
-	{
-		PriorityList const& plit = *it;
-		for(auto itb = plit.m_str.begin(); itb != plit.m_str.end(); ++itb)
-		{
-			if(!m_usedSuggestions.contains(*itb))
-			{
-				m_completions << createCompletionItem(*itb, m_varIcon, plit.m_pr);
-				m_usedSuggestions.insert(*itb);
-			}
-		}
-	}
-	for(auto it = keywords.begin(); it != keywords.end(); ++it)
-	{
-		PriorityList const& plit = *it;
-		for(auto itb = plit.m_str.begin(); itb != plit.m_str.end(); ++itb)
-		{
-			if(!m_usedSuggestions.contains(*itb))
-			{
-				m_completions << createCompletionItem(*itb, m_keywordIcon, plit.m_pr);
-				m_usedSuggestions.insert(*itb);
-			}
-		}
-	}
-	for(auto it = magics.begin(); it != magics.end(); ++it)
-	{
-		PriorityList const& plit = *it;
-		for(auto itb = plit.m_str.begin(); itb != plit.m_str.end(); ++itb)
-		{
-			if(!m_usedSuggestions.contains(*itb))
-			{
-				m_completions << createCompletionItem(*itb, m_functionIcon, plit.m_pr);
-				m_usedSuggestions.insert(*itb);
-			}
-		}
-	}
-	
-	m_startPosition = pos+1;
+
+    QSet<QString> m_usedSuggestions;
+
+    for(auto it = variables.begin(); it != variables.end(); ++it)
+    {
+        PriorityList const& plit = *it;
+        for(auto itb = plit.m_str.begin(); itb != plit.m_str.end(); ++itb)
+        {
+            if(!m_usedSuggestions.contains(*itb))
+            {
+                m_completions << createCompletionItem(*itb, m_memIcon, plit.m_pr);
+                m_usedSuggestions.insert(*itb);
+            }
+        }
+    }
+    for(auto it = globVariables.begin(); it != globVariables.end(); ++it)
+    {
+        PriorityList const& plit = *it;
+        for(auto itb = plit.m_str.begin(); itb != plit.m_str.end(); ++itb)
+        {
+            if(!m_usedSuggestions.contains(*itb))
+            {
+                m_completions << createCompletionItem(*itb, m_varIcon, plit.m_pr);
+                m_usedSuggestions.insert(*itb);
+            }
+        }
+    }
+    for(auto it = keywords.begin(); it != keywords.end(); ++it)
+    {
+        PriorityList const& plit = *it;
+        for(auto itb = plit.m_str.begin(); itb != plit.m_str.end(); ++itb)
+        {
+            if(!m_usedSuggestions.contains(*itb))
+            {
+                m_completions << createCompletionItem(*itb, m_keywordIcon, plit.m_pr);
+                m_usedSuggestions.insert(*itb);
+            }
+        }
+    }
+    for(auto it = magics.begin(); it != magics.end(); ++it)
+    {
+        PriorityList const& plit = *it;
+        for(auto itb = plit.m_str.begin(); itb != plit.m_str.end(); ++itb)
+        {
+            if(!m_usedSuggestions.contains(*itb))
+            {
+                m_completions << createCompletionItem(*itb, m_functionIcon, plit.m_pr);
+                m_usedSuggestions.insert(*itb);
+            }
+        }
+    }
+
+    m_startPosition = pos+1;
 
     if (isWordCompletion)
     {
         m_startPosition -= currentMember.length();
     }
 
-	return new TextEditor::GenericProposal(m_startPosition, m_completions);
+    return new TextEditor::GenericProposal(m_startPosition, m_completions);
 }
+
 
 bool LuaCompletionAssistProcessor::acceptsIdleEditor() const { return false; }
 

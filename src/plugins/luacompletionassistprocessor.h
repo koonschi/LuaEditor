@@ -19,7 +19,12 @@
 #include <QIcon>
 #include <QString>
 
+namespace TextEditor {
+class GenericProposal;
+}
+
 namespace LuaEditor { namespace Internal {
+
 class LuaCompletionAssistProcessor : public TextEditor::IAssistProcessor
 {
 public:
@@ -40,6 +45,8 @@ public:
     QStringList predefinedWords;
 
     void readWords(QStringList &list, QString path);
+    TextEditor::GenericProposal *createContentProposal(const TextEditor::AssistInterface *interface);
+    TextEditor::IAssistProposal *tryCreateFunctionHintProposal(const TextEditor::AssistInterface *interface);
 };
 
 } }

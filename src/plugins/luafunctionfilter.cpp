@@ -6,6 +6,65 @@
 
 #include <QStringMatcher>
 
+QList<QSharedPointer<LuaFunctionFilter::FunctionEntry> > LuaFunctionFilter::parseFunctions(const QString &text)
+{
+    QList<QSharedPointer<LuaFunctionFilter::FunctionEntry> > functions;
+
+    QString searchExpression(R"(.*function\s*((.*)\s*(\(.*\))).*)");
+
+    QStringList parts = text.split(QChar('\n'));
+    for (int i = 0; i < parts.size(); ++i)
+    {
+        QRegExp regex(searchExpression);
+        regex.setMinimal(true);
+
+        if (regex.indexIn(parts[i]) != -1)
+        {
+            QSharedPointer<FunctionEntry> entry(new FunctionEntry());
+
+            QStringList capturedTexts = regex.capturedTexts();
+            QString functionName = capturedTexts[2];
+
+            if (functionName.trimmed().isEmpty())
+                continue;
+
+            QChar splitChar('\0');
+            if (functionName.contains(QChar(':')))
+            {
+                entry->surroundingType = SurroundingType::Object;
+                splitChar = QChar(':');
+            }
+            else if (functionName.contains(QChar('.')))
+            {
+                entry->surroundingType = SurroundingType::Module;
+                splitChar = QChar('.');
+            }
+
+            if (splitChar != QChar('\0'))
+            {
+                auto parts = functionName.split(splitChar);
+                functionName = parts.last();
+                for (int j = 0; j < parts.size() - 1; ++j)
+                {
+                    if (j > 0)
+                        entry->surroundingName += QString(".");
+
+                    entry->surroundingName += parts[j].trimmed();
+                }
+            }
+
+            entry->line = i + 1;
+            entry->fullFunction = capturedTexts[1].trimmed();
+            entry->functionName = functionName.trimmed();
+            entry->arguments = capturedTexts[3].trimmed();
+
+            functions.push_back(entry);
+        }
+    }
+
+    return functions;
+}
+
 LuaFunctionFilter::LuaFunctionFilter()
     : m_functionIcon(QLatin1String(":/LuaEditor/images/func.png"))
 {
@@ -95,7 +154,6 @@ void LuaFunctionFilter::refresh(QFutureInterface<void> &future)
 
 void LuaFunctionFilter::onDocumentUpdated()
 {
-
     QMutexLocker locker(&m_mutex);
     if (m_currentEditor)
     {
@@ -169,59 +227,12 @@ QList<QSharedPointer<LuaFunctionFilter::FunctionEntry> > LuaFunctionFilter::item
 
     if (m_itemsOfCurrentDoc.isEmpty())
     {
-        QString searchExpression(R"(.*function\s*((.*)\s*(\(.*\))).*)");
+        m_itemsOfCurrentDoc = parseFunctions(m_currentContents);
 
-        QStringList parts = m_currentContents.split(QChar('\n'));
-        for (int i = 0; i < parts.size(); ++i)
+        for (QSharedPointer<LuaFunctionFilter::FunctionEntry> &function : m_itemsOfCurrentDoc)
         {
-            QRegExp regex(searchExpression);
-            regex.setMinimal(true);
-
-            if (regex.indexIn(parts[i]) != -1)
-            {
-                QSharedPointer<FunctionEntry> entry(new FunctionEntry());
-
-                QStringList capturedTexts = regex.capturedTexts();
-                QString functionName = capturedTexts[2];
-
-                if (functionName.trimmed().isEmpty())
-                    continue;
-
-                QChar splitChar('\0');
-                if (functionName.contains(QChar(':')))
-                {
-                    entry->surroundingType = SurroundingType::Object;
-                    splitChar = QChar(':');
-                }
-                else if (functionName.contains(QChar('.')))
-                {
-                    entry->surroundingType = SurroundingType::Module;
-                    splitChar = QChar('.');
-                }
-
-                if (splitChar != QChar('\0'))
-                {
-                    auto parts = functionName.split(splitChar);
-                    functionName = parts.last();
-                    for (int j = 0; j < parts.size() - 1; ++j)
-                    {
-                        if (j > 0)
-                            entry->surroundingName += QString(".");
-
-                        entry->surroundingName += parts[j].trimmed();
-                    }
-                }
-
-                entry->line = i + 1;
-                entry->fileName = m_currentFileName;
-                entry->fullFunction = capturedTexts[1].trimmed();
-                entry->functionName = functionName.trimmed();
-                entry->arguments = capturedTexts[3].trimmed();
-
-                m_itemsOfCurrentDoc.push_back(entry);
-            }
+            function->fileName = m_currentFileName;
         }
-
     }
 
     return m_itemsOfCurrentDoc;
