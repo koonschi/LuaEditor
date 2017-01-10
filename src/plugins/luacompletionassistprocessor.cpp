@@ -437,25 +437,89 @@ TextEditor::GenericProposal *LuaCompletionAssistProcessor::createContentProposal
         currentMember = interface->textAt(cpos, cpos_end-cpos);
     }
 
+    bool isPerfectMatch = false;
+    QStringList perfectContextMatches;
+    if (isMemberCompletion || isFunctionCompletion)
+    {
+        if (currentMember.isEmpty())
+        {
+            int cpos = pos - 1;
+            while((cpos >= 0) && !interface->characterAt(cpos).isSpace())
+                --cpos;
+            cpos++;
+
+            currentMember = interface->textAt(cpos, pos - cpos);
+        }
+
+        // currentMember holds a string like "Foo" when invoked here: Foo:     or Foo.
+        //                                                                ^           ^
+        std::cout << currentMember.toStdString() << std::endl;
+
+        // we accept Foo(): as well
+        if (currentMember.endsWith("()"))
+            currentMember = currentMember.left(currentMember.size() - 2);
+
+        std::cout << currentMember.toStdString() << std::endl;
+
+        FunctionParser::FunctionList parsedFunctions = FunctionParser::parseFunctionsInFile(interface->fileName());
+        for (QSharedPointer<FunctionParser::Function> &parsedFunction : parsedFunctions)
+        {
+            if (parsedFunction->surroundingName == currentMember)
+            {
+                perfectContextMatches.push_back(parsedFunction->functionName);
+            }
+        }
+
+        if (isFunctionCompletion)
+        {
+            for (auto it = predefinedFunctionInfos.begin(); it != predefinedFunctionInfos.end(); ++it)
+            {
+                for (const Function &parsedFunction : it.value())
+                {
+                    if (parsedFunction.m_functionName.startsWith(currentMember))
+                    {
+                        perfectContextMatches.push_back(it.key());
+                    }
+                }
+            }
+        }
+
+        if (isMemberCompletion)
+        {
+
+        }
+
+        isPerfectMatch = !perfectContextMatches.isEmpty();
+    }
+
     QList<PriorityList> globVariables;
     QList<PriorityList> variables;
     QList<PriorityList> keywords;
     QList<PriorityList> magics;
 
-    RecursiveClassMembers targetIds;
-    Scanner::TakeBackwardsState(interface->textDocument()->findBlockByLineNumber(interface->textDocument()->findBlock(interface->position()).firstLineNumber()-1),&targetIds);
-
     QStringList functionsInDocument;
-    if (isFunctionCompletion || isWordCompletion)
+    RecursiveClassMembers targetIds;
+
+    if (!isPerfectMatch)
     {
-        FunctionParser::FunctionList parsedFunctions = FunctionParser::parseFunctionsInFile(interface->fileName());
-        for (QSharedPointer<FunctionParser::Function> &parsedFunction : parsedFunctions)
+        Scanner::TakeBackwardsState(interface->textDocument()->findBlockByLineNumber(interface->textDocument()->findBlock(interface->position()).firstLineNumber()-1),&targetIds);
+
+        if (isFunctionCompletion || isWordCompletion)
         {
-            functionsInDocument.append(parsedFunction->functionName);
+            FunctionParser::FunctionList parsedFunctions = FunctionParser::parseFunctionsInFile(interface->fileName());
+            for (QSharedPointer<FunctionParser::Function> &parsedFunction : parsedFunctions)
+            {
+                functionsInDocument.append(parsedFunction->functionName);
+            }
         }
     }
 
-    if(isMemberCompletion || isFunctionCompletion)
+    if (isPerfectMatch)
+    {
+        // show only the ones that match perfectly
+        globVariables.append({perfectContextMatches, 1});
+    }
+    else if (isMemberCompletion || isFunctionCompletion)
     {
         RecursiveClassMembers writtenTargetId;
         Scanner::TakeBackwardsMember(interface->textDocument()->findBlock(interface->position()),writtenTargetId);
