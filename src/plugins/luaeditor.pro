@@ -41,8 +41,7 @@ HEADERS += luaeditorplugin.h \
     luacompletionassistprocessor.h \
     luafunctionhintproposalmodel.h \
     scanner/recursiveclassmembers.h \
-	  luaengine/luaengine.h \
-	  luaengine/luaengine_requirements.h \
+    luaengine/luaengine.h \
     luafunctionfilter.h \
     luafunctionparser.h \
     predefineddocumentationparser.h
