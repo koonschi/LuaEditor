@@ -8,6 +8,36 @@
 
 namespace LuaEditor { namespace Internal {
 
+void PredefinedDocumentationParser::addLuaMembers(QMap<QString, QStringList> &members)
+{
+    members[QString("package")].push_back(QString("config"));
+    members[QString("package")].push_back(QString("cpath"));
+    members[QString("package")].push_back(QString("loaded"));
+    members[QString("package")].push_back(QString("path"));
+    members[QString("package")].push_back(QString("preload"));
+    members[QString("package")].push_back(QString("searchers"));
+
+    members[QString("math")].push_back(QString("huge"));
+    members[QString("math")].push_back(QString("maxinteger"));
+    members[QString("math")].push_back(QString("mininteger"));
+    members[QString("math")].push_back(QString("pi"));
+
+    members[QString("utf8")].push_back(QString("charpattern"));
+}
+
+void PredefinedDocumentationParser::addLuaWords(QStringList &words)
+{
+    words.push_back("package");
+    words.push_back("debug");
+    words.push_back("math");
+    words.push_back("utf8");
+    words.push_back("os");
+    words.push_back("io");
+    words.push_back("table");
+    words.push_back("string");
+    words.push_back("coroutine");
+}
+
 void PredefinedDocumentationParser::readMembers(QStringList &words, QMap<QString, QStringList> &members, QString path)
 {
     QFile ifile(path);
@@ -61,6 +91,7 @@ void PredefinedDocumentationParser::readMembers(QStringList &words, QMap<QString
         }
     }
 
+    addLuaMembers(members);
 
     // update cache
     dates[path] = std::make_tuple(QDateTime::currentDateTime(), words, members);
@@ -164,6 +195,7 @@ void PredefinedDocumentationParser::readWords(QStringList &out, QString path)
 
     // get words
     out = content.split(QString::fromLatin1("\n"));
+    addLuaWords(out);
     out.removeAll(QString(""));
 
     // update cache

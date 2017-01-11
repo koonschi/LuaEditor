@@ -21,6 +21,14 @@ public:
             Module = 2,
         };
 
+        Function() = default;
+        Function(QString functionName,
+                 QString arguments,
+                 QString surroundingName = QString(),
+                 SurroundingType surroundingType = SurroundingType::None,
+                 QString fileName = QString(),
+                 int line = 0);
+
         QString fullFunction;
         QString functionName;
         QString surroundingName;
@@ -41,6 +49,8 @@ public:
     static QStringList findDependencies(const QString &path);
     static QStringList parseRequiredFiles(QFile &ifile);
     static QString requireExists(QDir directory, QStringList packagePaths, QString require);
+
+    static void addLuaLibraryCalls(FunctionList &list);
 };
 
 

@@ -17,7 +17,8 @@ public:
     static void readCalls(QStringList &words, QMap<QString, QVector<Function>> &functionsByFunction, QMap<QString, QVector<Function>> &functionsByObject, QString path);
     static void readWords(QStringList &out, QString path);
 
-
+    static void addLuaMembers(QMap<QString, QStringList> &members);
+    static void addLuaWords(QStringList &words);
 };
 
 } }
