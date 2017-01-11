@@ -13,7 +13,6 @@
 */
 
 #include "luaengine.h"
-#include "luaengine_requirements.h"
 
 #include <algorithm>
 #include <sstream>
