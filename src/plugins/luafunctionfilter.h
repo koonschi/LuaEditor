@@ -3,31 +3,15 @@
 
 #include <coreplugin/locator/ilocatorfilter.h>
 
+#include "luafunctionparser.h"
+
 namespace Core { class IEditor; }
 
 class LuaFunctionFilter : public Core::ILocatorFilter
 {
     Q_OBJECT
 public:
-    enum SurroundingType
-    {
-        None = 0,
-        Object = 1,
-        Module = 2,
-    };
-
-    struct FunctionEntry
-    {
-        QString fullFunction;
-        QString functionName;
-        QString surroundingName;
-        QString arguments;
-
-        SurroundingType surroundingType = SurroundingType::None;
-
-        QString fileName;
-        int line = 0;
-    };
+    typedef LuaEditor::Internal::FunctionParser::Function Function;
 
 public:
     explicit LuaFunctionFilter();
@@ -42,7 +26,7 @@ private:
     void onCurrentEditorChanged(Core::IEditor *currentEditor);
     void onEditorAboutToClose(Core::IEditor *currentEditor);
 
-    QList<QSharedPointer<FunctionEntry>> itemsOfCurrentDocument();
+    QList<QSharedPointer<Function>> itemsOfCurrentDocument();
 
     QIcon m_functionIcon;
 
@@ -50,9 +34,9 @@ private:
     Core::IEditor *m_currentEditor = nullptr;
     QString m_currentFileName;
     QString m_currentContents;
-    QList<QSharedPointer<FunctionEntry>> m_itemsOfCurrentDoc;
+    QList<QSharedPointer<Function>> m_itemsOfCurrentDoc;
 };
 
-Q_DECLARE_METATYPE(QSharedPointer<LuaFunctionFilter::FunctionEntry>);
+Q_DECLARE_METATYPE(QSharedPointer<LuaFunctionFilter::Function>);
 
 #endif // LUAFUNCTIONFILTER_H

@@ -20,7 +20,10 @@ SOURCES += luaeditorplugin.cpp \
     luafunctionhintproposalmodel.cpp \
     scanner/recursiveclassmembers.cpp \
     luaengine/luaEngine.cpp \
-    luafunctionfilter.cpp
+    luafunctionfilter.cpp \
+    luafunctionparser.cpp \
+    predefineddocumentationparser.cpp
+
 
 HEADERS += luaeditorplugin.h \
     luaeditor_global.h \
@@ -38,8 +41,11 @@ HEADERS += luaeditorplugin.h \
     luacompletionassistprocessor.h \
     luafunctionhintproposalmodel.h \
     scanner/recursiveclassmembers.h \
-    luaengine/luaengine.h \
-    luafunctionfilter.h
+	  luaengine/luaengine.h \
+	  luaengine/luaengine_requirements.h \
+    luafunctionfilter.h \
+    luafunctionparser.h \
+    predefineddocumentationparser.h
 
 # Qt Creator linking
 
@@ -83,4 +89,7 @@ OTHER_FILES += \
 
 RESOURCES += \
     luaeditor.qrc
+
+DISTFILES += \
+    sandbox.lua
 
