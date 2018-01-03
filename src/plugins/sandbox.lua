@@ -17,5 +17,11 @@ end
 
 testFunction("this is a test", weaponIcon.arg1, 123)
 
+-- comment
 
+--[[
+
+]]
+
+asd = 12
 

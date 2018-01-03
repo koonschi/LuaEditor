@@ -85,6 +85,10 @@ QList<Core::LocatorFilterEntry> LuaFunctionFilter::matchesFor(
 
 void LuaFunctionFilter::accept(Core::LocatorFilterEntry selection, QString *newText, int *selectionStart, int *selectionLength) const
 {
+    Q_UNUSED(newText)
+    Q_UNUSED(selectionStart)
+    Q_UNUSED(selectionLength)
+
     QSharedPointer<Function> info = qvariant_cast<QSharedPointer<Function>>(selection.internalData);
     Core::EditorManager::openEditorAt(info->fileName, info->line);
 }
