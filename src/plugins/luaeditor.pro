@@ -4,7 +4,9 @@ CONFIG += c++11
 
 # DEFINES += ALLOW_LOGGING
 
-LIBS += -llua
+INCLUDEPATH += "/usr/include/lua5.2"
+
+LIBS += -llua5.2
 
 SOURCES += luaeditorplugin.cpp \
     luahoverhandler.cpp \
@@ -44,7 +46,8 @@ HEADERS += luaeditorplugin.h \
     luaengine/luaengine.h \
     luafunctionfilter.h \
     luafunctionparser.h \
-    predefineddocumentationparser.h
+    predefineddocumentationparser.h \
+    luaengine/lua.hpp
 
 # Qt Creator linking
 

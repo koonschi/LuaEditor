@@ -28,7 +28,7 @@ LuaFunctionFilter::LuaFunctionFilter()
 QList<Core::LocatorFilterEntry> LuaFunctionFilter::matchesFor(
         QFutureInterface<Core::LocatorFilterEntry> &future, const QString & origEntry)
 {
-    QString entry = trimWildcards(origEntry);
+    QString entry = origEntry;
 
     QList<Core::LocatorFilterEntry> goodEntries;
     QList<Core::LocatorFilterEntry> betterEntries;
@@ -83,7 +83,7 @@ QList<Core::LocatorFilterEntry> LuaFunctionFilter::matchesFor(
     return betterEntries;
 }
 
-void LuaFunctionFilter::accept(Core::LocatorFilterEntry selection) const
+void LuaFunctionFilter::accept(Core::LocatorFilterEntry selection, QString *newText, int *selectionStart, int *selectionLength) const
 {
     QSharedPointer<Function> info = qvariant_cast<QSharedPointer<Function>>(selection.internalData);
     Core::EditorManager::openEditorAt(info->fileName, info->line);

@@ -24,7 +24,7 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include <lua.hpp>
+#include "lua.hpp"
 
 namespace LuaEngine {
 	struct Cursor {

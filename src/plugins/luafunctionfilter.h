@@ -18,7 +18,8 @@ public:
     ~LuaFunctionFilter() {}
 
     QList<Core::LocatorFilterEntry> matchesFor(QFutureInterface<Core::LocatorFilterEntry> &future, const QString &entry);
-    void accept(Core::LocatorFilterEntry selection) const;
+    void accept(Core::LocatorFilterEntry selection, QString *newText, int *selectionStart, int *selectionLength) const;
+
     void refresh(QFutureInterface<void> &future);
 
 private:
