@@ -52,6 +52,7 @@ LuaEditorFactory::LuaEditorFactory()
     setCodeFoldingSupported(true);
 
     setEditorActionHandlers(TextEditor::TextEditorActionHandler::Format
+                          | TextEditor::TextEditorActionHandler::UnCommentSelection
                           | TextEditor::TextEditorActionHandler::UnCollapseAll);
 }
 
