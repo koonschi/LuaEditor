@@ -24,7 +24,7 @@ class LuaHoverHandler : public TextEditor::BaseHoverHandler
 public:
 	LuaHoverHandler() {}
 private:
-	virtual void identifyMatch(TextEditor::TextEditorWidget *editorWidget, int pos) override;
+    virtual void identifyMatch(TextEditor::TextEditorWidget *editorWidget, int pos, ReportPriority report) override;
 	virtual void decorateToolTip() override;
 };
 

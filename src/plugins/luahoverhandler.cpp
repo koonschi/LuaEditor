@@ -14,11 +14,14 @@
 
 #include "luahoverhandler.h"
 #include <texteditor/texteditor.h>
+#include <utils/executeondestruction.h>
 
 namespace LuaEditor { namespace Internal {
 
-void LuaHoverHandler::identifyMatch(TextEditor::TextEditorWidget *editorWidget, int pos)
+void LuaHoverHandler::identifyMatch(TextEditor::TextEditorWidget *editorWidget, int pos, ReportPriority report)
 {
+    Utils::ExecuteOnDestruction reportPriority([this, report](){ report(priority()); });
+
 	if(!editorWidget->extraSelectionTooltip(pos).isEmpty())
 		setToolTip(editorWidget->extraSelectionTooltip(pos));
 }
