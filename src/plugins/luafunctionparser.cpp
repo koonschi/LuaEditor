@@ -141,6 +141,22 @@ QStringList FunctionParser::parseRequiredFiles(QFile &ifile)
         }
     }
 
+    QString includeExpression(R"EXPR(.*include\s*.*"(.*)".*)EXPR");
+
+    for (int i = 0; i < parts.size(); ++i)
+    {
+        QRegExp regex(includeExpression);
+        regex.setMinimal(true);
+
+        if (regex.indexIn(parts[i]) != -1)
+        {
+            QStringList capturedTexts = regex.capturedTexts();
+            QString require = capturedTexts[1];
+
+            requires.push_back(require);
+        }
+    }
+
     // resolve all require expressions with the help of package paths
     QFileInfo path = ifile.fileName();
     QDir directory = path.dir();
@@ -382,6 +398,7 @@ void FunctionParser::addLuaLibraryCalls(FunctionList &list)
 
         // Modules
         QSharedPointer<Function>(new Function("require", "modname")),
+        QSharedPointer<Function>(new Function("include", "modname")),
         QSharedPointer<Function>(new Function("loadlib", "libname, funcname", "package", Function::SurroundingType::Module)),
         QSharedPointer<Function>(new Function("searchpath", "name, path, [sep], [rep]", "package", Function::SurroundingType::Module)),
         // todo: package.config package.cpath package.loaded package.path package.preload package.searchers
