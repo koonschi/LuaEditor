@@ -297,8 +297,7 @@ TextEditor::IAssistProposal *LuaCompletionAssistProcessor::tryCreateFunctionHint
             }
         }
 
-        TextEditor::IFunctionHintProposalModel *model =
-                new LuaFunctionHintProposalModel(std::move(functions));
+        TextEditor::FunctionHintProposalModelPtr model(new LuaFunctionHintProposalModel(std::move(functions)));
 
         return new TextEditor::FunctionHintProposal(beginningOfFunctionName + 1, model);
     }
