@@ -41,7 +41,7 @@ LuaIndenter::~LuaIndenter(){}
 
 bool LuaIndenter::isElectricCharacter(QChar const& ch) const { return ch == QLatin1Char('{') || ch == QLatin1Char('='); }
 bool LuaIndenter::isInvElectricCharacter(QChar const&) const { return false; }
-void LuaIndenter::indentBlock(const QTextBlock &block, const QChar &typedChar, const TextEditor::TabSettings &tabSettings)
+void LuaIndenter::indentBlock(const QTextBlock &block, const QChar &typedChar, const TextEditor::TabSettings &tabSettings, int /*cursorPositionInEditor*/)
 {
 	Q_UNUSED(typedChar);
 	

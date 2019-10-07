@@ -28,7 +28,12 @@ public:
 	
 	bool isElectricCharacter(const QChar &ch) const;
 	virtual bool isInvElectricCharacter(const QChar &ch) const;
-	void indentBlock(const QTextBlock &block, const QChar &typedChar, const TextEditor::TabSettings &tabSettings);
+
+    void indentBlock(const QTextBlock &block,
+                 const QChar &typedChar,
+                 const TextEditor::TabSettings &tabSettings,
+                 int cursorPositionInEditor = -1) override;
+
 protected:
 	QString getLastKeyword(QString const& line) const;
 	int getLineDelta(QString const& line) const;
