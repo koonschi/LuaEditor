@@ -16,19 +16,19 @@
 #define LUAINDENTER_H
 
 #include "luaeditor_global.h"
-#include <texteditor/indenter.h>
+#include <texteditor/textindenter.h>
 
 namespace LuaEditor { namespace Internal {
 
-class LuaIndenter : public TextEditor::Indenter
+class LuaIndenter : public TextEditor::TextIndenter
 {
 public:
-	LuaIndenter();
+	LuaIndenter(QTextDocument *doc);
 	virtual ~LuaIndenter();
 	
 	bool isElectricCharacter(const QChar &ch) const;
 	virtual bool isInvElectricCharacter(const QChar &ch) const;
-	void indentBlock(QTextDocument *doc, const QTextBlock &block, const QChar &typedChar, const TextEditor::TabSettings &tabSettings);
+	void indentBlock(const QTextBlock &block, const QChar &typedChar, const TextEditor::TabSettings &tabSettings);
 protected:
 	QString getLastKeyword(QString const& line) const;
 	int getLineDelta(QString const& line) const;

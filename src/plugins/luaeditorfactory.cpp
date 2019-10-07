@@ -40,7 +40,7 @@ LuaEditorFactory::LuaEditorFactory()
     setDocumentCreator([](){return new TextEditor::TextDocument(Constants::C_LUAEDITOR_ID);});
     setEditorWidgetCreator([](){return new LuaEditorWidget;});
     setSyntaxHighlighterCreator([](){return new LuaHighlighter;});
-    setIndenterCreator([](){return new LuaIndenter;});
+    setIndenterCreator([](QTextDocument *doc){return new LuaIndenter(doc);});
     setAutoCompleterCreator([](){return new LuaAutoCompleter;});
     setCompletionAssistProvider(new LuaCompletionAssistProvider);
 
