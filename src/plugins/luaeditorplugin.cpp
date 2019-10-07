@@ -27,6 +27,14 @@ namespace LuaEditor { namespace Internal {
 
 static LuaEditorPlugin* m_instance = nullptr;
 
+class LuaEditorPluginPrivate : public QObject {
+    
+    LuaEditorFactory luaEditorFactory;
+    LuaFunctionFilter luaFunctionFilter;
+
+    //LuaCompletionAssistProvider luaCompletionAssistProvider;
+};
+
 LuaEditorPlugin::LuaEditorPlugin()
 {
     m_instance = this;
@@ -34,6 +42,8 @@ LuaEditorPlugin::LuaEditorPlugin()
 
 LuaEditorPlugin::~LuaEditorPlugin()
 {
+    delete d;
+    d = nullptr;
     m_instance = nullptr;
 }
 
@@ -42,6 +52,8 @@ bool LuaEditorPlugin::initialize(const QStringList &arguments, QString *errorStr
     Q_UNUSED(arguments)
     Q_UNUSED(errorString)
 
+    d = new LuaEditorPluginPrivate;
+
     QString fileName = QLatin1String(":/LuaEditor/LuaEditor.mimetypes.xml");
 
     QFile file(fileName);
@@ -49,10 +61,6 @@ bool LuaEditorPlugin::initialize(const QStringList &arguments, QString *errorStr
     QByteArray blob = file.readAll();
 
     Utils::addMimeTypes(fileName, blob);
-    addAutoReleasedObject(new LuaEditorFactory);
-    addAutoReleasedObject(new LuaFunctionFilter);
-
-    //addAutoReleasedObject(new LuaCompletionAssistProvider);
 
     Core::ActionContainer* contextMenu = Core::ActionManager::createMenu(Constants::M_CONTEXT);
 #if 0
