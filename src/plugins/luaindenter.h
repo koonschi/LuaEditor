@@ -23,20 +23,22 @@ namespace LuaEditor { namespace Internal {
 class LuaIndenter : public TextEditor::TextIndenter
 {
 public:
-	LuaIndenter(QTextDocument *doc);
-	virtual ~LuaIndenter();
-	
-	bool isElectricCharacter(const QChar &ch) const;
-	virtual bool isInvElectricCharacter(const QChar &ch) const;
+    LuaIndenter(QTextDocument *doc);
+    virtual ~LuaIndenter();
+
+    bool isElectricCharacter(const QChar &ch) const;
 
     void indentBlock(const QTextBlock &block,
                  const QChar &typedChar,
                  const TextEditor::TabSettings &tabSettings,
                  int cursorPositionInEditor = -1) override;
 
+    virtual void unindentBlockIfNecessary(const QTextBlock &block,
+                 const TextEditor::TabSettings &tabSettings);
 protected:
-	QString getLastKeyword(QString const& line) const;
-	int getLineDelta(QString const& line) const;
+    QString getLastKeyword(QString const& line) const;
+    QVector<QString> getAllKeywords(const QString &line) const;
+    int getLineDelta(QString const& line) const;
 };
 
 } }
