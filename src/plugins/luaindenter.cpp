@@ -68,7 +68,9 @@ void LuaIndenter::indentBlock(const QTextBlock &block,
 
     // Iterate until we find a previous line that contains text
     while(previousBlock.isValid() &&
-          previousBlock.text().trimmed().isEmpty()){
+          (previousBlock.text().trimmed().isEmpty() ||
+           previousBlock.text().trimmed().startsWith("--")
+          )){
         previousBlock = previousBlock.previous();
     }
 
