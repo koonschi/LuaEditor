@@ -1,15 +1,15 @@
-/*	Copyright (c) 2015 SGH
-**	
-**	Permission is granted to use, modify and redistribute this software.
-**	Modified versions of this software MUST be marked as such.
-**	
-**	This software is provided "AS IS". In no event shall
-**	the authors or copyright holders be liable for any claim,
-**	damages or other liability. The above copyright notice
-**	and this permission notice shall be included in all copies
-**	or substantial portions of the software.
-**	
-**	File created on: 22/08/2015
+/*  Copyright (c) 2015 SGH
+**  
+**  Permission is granted to use, modify and redistribute this software.
+**  Modified versions of this software MUST be marked as such.
+**  
+**  This software is provided "AS IS". In no event shall
+**  the authors or copyright holders be liable for any claim,
+**  damages or other liability. The above copyright notice
+**  and this permission notice shall be included in all copies
+**  or substantial portions of the software.
+**  
+**  File created on: 22/08/2015
 */
 
 #include "luaindenter.h"
@@ -22,21 +22,22 @@
 namespace LuaEditor { namespace Internal {
 
 static QSet<QString> const g_increaseKeywords = {
-	QStringLiteral("function"),
-	QStringLiteral("do"),
-	QStringLiteral("then"),
-	QStringLiteral("else"),
-	QStringLiteral("repeat")
+    QStringLiteral("function"),
+    QStringLiteral("do"),
+    QStringLiteral("then"),
+    QStringLiteral("elseif"),
+    QStringLiteral("else"),
+    QStringLiteral("repeat")
 };
 static QSet<QString> const g_decreaseKeywords = {
-	QStringLiteral("end"),
-	QStringLiteral("until"),
-	QStringLiteral("elseif"),
-	QStringLiteral("else"),
+    QStringLiteral("end"),
+    QStringLiteral("until"),
+    QStringLiteral("elseif"),
+    QStringLiteral("else"),
 };
 
 LuaIndenter::LuaIndenter(QTextDocument *doc)
-	: TextEditor::TextIndenter(doc)
+    : TextEditor::TextIndenter(doc)
 {}
 
 LuaIndenter::~LuaIndenter(){}
@@ -54,7 +55,7 @@ void LuaIndenter::indentBlock(const QTextBlock &block,
                               const TextEditor::TabSettings &tabSettings,
                               int /*cursorPositionInEditor*/)
 {
-	Q_UNUSED(typedChar);
+    Q_UNUSED(typedChar);
 
     // If unindent keyword detected, do an unindentation run
     for(const QString &decreaseKeyword: g_decreaseKeywords){
@@ -64,7 +65,11 @@ void LuaIndenter::indentBlock(const QTextBlock &block,
         }
     }
 
-	QTextBlock previousBlock = block.previous();
+    // Only run indentation if newline got typed. Don't auto-indent current line.
+    if(!typedChar.isNull())
+        return;
+
+    QTextBlock previousBlock = block.previous();
 
     // Iterate until we find a previous line that contains text
     while(previousBlock.isValid() &&
@@ -75,23 +80,23 @@ void LuaIndenter::indentBlock(const QTextBlock &block,
     }
 
     // If we didn't find one, assume indentation of 0
-	if(!previousBlock.isValid())
-	{
-		tabSettings.indentLine(block, 0);
-		return;
-	}
+    if(!previousBlock.isValid())
+    {
+        tabSettings.indentLine(block, 0);
+        return;
+    }
 
     QString const& previousBlockText = previousBlock.text();
 
     // Get the indentation depth of the previous line
-	int previousIndentation = tabSettings.indentationColumn(previousBlockText);
+    int previousIndentation = tabSettings.indentationColumn(previousBlockText);
 
-	tabSettings.indentLine(block,
-		qMax<int>(0,
+    tabSettings.indentLine(block,
+        qMax<int>(0,
             previousIndentation
             + qMax(0, getLineDelta(previousBlockText)) * tabSettings.m_indentSize
-		)
-	);
+        )
+    );
 }
 
 void LuaIndenter::unindentBlockIfNecessary(const QTextBlock &block,
@@ -166,28 +171,28 @@ QVector<QString> LuaIndenter::getAllKeywords(const QString &line) const
     QVector<QString> keywords;
 
     FormatToken thisToken;
-	Scanner scannerA(line.constData(),line.size());
-	while((thisToken = scannerA.read()).format() != Format_EndOfBlock)
-	{
-		if(thisToken.format() == Format_Keyword)
-			keywords.push_back(scannerA.value(thisToken));
-	}
+    Scanner scannerA(line.constData(),line.size());
+    while((thisToken = scannerA.read()).format() != Format_EndOfBlock)
+    {
+        if(thisToken.format() == Format_Keyword)
+            keywords.push_back(scannerA.value(thisToken));
+    }
 
     return keywords;
 }
 
 QString LuaIndenter::getLastKeyword(const QString &line) const
 {
-	QString lastKeyword;
-	
-	FormatToken thisToken;
-	Scanner scannerA(line.constData(),line.size());
-	while((thisToken = scannerA.read()).format() != Format_EndOfBlock)
-	{
-		if(thisToken.format() == Format_Keyword)
-			lastKeyword = scannerA.value(thisToken);
-	}
-	return lastKeyword;
+    QString lastKeyword;
+    
+    FormatToken thisToken;
+    Scanner scannerA(line.constData(),line.size());
+    while((thisToken = scannerA.read()).format() != Format_EndOfBlock)
+    {
+        if(thisToken.format() == Format_Keyword)
+            lastKeyword = scannerA.value(thisToken);
+    }
+    return lastKeyword;
 }
 
 int LuaIndenter::getLineDelta(const QString& line) const
