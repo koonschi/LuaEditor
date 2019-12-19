@@ -25,7 +25,6 @@ static QSet<QString> const g_increaseKeywords = {
     QStringLiteral("function"),
     QStringLiteral("do"),
     QStringLiteral("then"),
-    QStringLiteral("elseif"),
     QStringLiteral("else"),
     QStringLiteral("repeat")
 };
