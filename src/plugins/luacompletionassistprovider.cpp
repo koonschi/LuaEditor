@@ -32,9 +32,9 @@ static bool isActivationChar(QChar const& ch)
 	return false;
 }
 
-bool LuaCompletionAssistProvider::supportsEditor(Core::Id editorId) const
+bool LuaCompletionAssistProvider::supportsEditor(Utils::Id editorId) const
 {
-	return editorId == Constants::C_LUAEDITOR_ID;
+    return editorId == Constants::C_LUAEDITOR_ID;
 }
 
 TextEditor::IAssistProcessor* LuaCompletionAssistProvider::createProcessor() const

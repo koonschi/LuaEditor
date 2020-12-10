@@ -16,6 +16,7 @@
 #define LUACOMPLETIONASSISTPROVIDER_H
 #include "luaeditor_global.h"
 #include <texteditor/codeassist/completionassistprovider.h>
+#include <coreplugin/id.h>
 
 namespace LuaEditor { namespace Internal {
 
@@ -23,7 +24,7 @@ class LuaCompletionAssistProvider : public TextEditor::CompletionAssistProvider
 {
 	Q_OBJECT
 public:
-	bool supportsEditor(Core::Id editorId) const;
+    bool supportsEditor(Utils::Id editorId) const;
 	TextEditor::IAssistProcessor* createProcessor() const;
 	int activationCharSequenceLength() const;
 	bool isActivationCharSequence(QString const& sequence) const;

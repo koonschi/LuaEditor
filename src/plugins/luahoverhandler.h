@@ -25,7 +25,6 @@ public:
 	LuaHoverHandler() {}
 private:
     virtual void identifyMatch(TextEditor::TextEditorWidget *editorWidget, int pos, ReportPriority report) override;
-	virtual void decorateToolTip() override;
 };
 
 } }

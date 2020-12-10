@@ -26,10 +26,4 @@ void LuaHoverHandler::identifyMatch(TextEditor::TextEditorWidget *editorWidget, 
 		setToolTip(editorWidget->extraSelectionTooltip(pos));
 }
 
-void LuaHoverHandler::decorateToolTip()
-{
-	if(Qt::mightBeRichText(toolTip()))
-		setToolTip(toolTip().toHtmlEscaped());
-}
-
 } }
